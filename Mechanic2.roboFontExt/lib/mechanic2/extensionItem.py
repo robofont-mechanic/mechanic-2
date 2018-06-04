@@ -460,6 +460,7 @@ if __name__ == "__main__":
             context = ssl._create_unverified_context()
             response = urlopen(url, timeout=5, context=context)
             extensionData = json.loads(response.read())
+            response.close()
         except Exception as message:
             print(message)
             extensionData = dict()
