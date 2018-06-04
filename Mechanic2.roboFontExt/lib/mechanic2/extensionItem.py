@@ -448,5 +448,3 @@ class ExtensionStoreItem(BaseExtensionItem):
     def openRemotePurchageURL(self):
         url = self.remotePurchageURL()
         self.openUrl(url)
-
-
