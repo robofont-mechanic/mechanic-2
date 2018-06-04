@@ -92,8 +92,15 @@ class BaseExtensionItem(object):
     def extensionIcon(self):
         imageURL = self._data.get("icon", None)
         if imageURL:
-            url = AppKit.NSURL.URLWithString_(imageURL)
-            image = AppKit.NSImage.alloc().initWithContentsOfURL_(url)
+            try:
+                context = ssl._create_unverified_context()
+                response = urlopen(imageURL, timeout=5, context=context)
+                contents = response.read()
+            except Exception as message:
+                print(message)
+                return None
+            data = AppKit.NSData.dataWithBytes_length_(contents, len(contents))
+            image = AppKit.NSImage.alloc().initWithData_(data)
             return image
         return None
 
