@@ -8,6 +8,7 @@ import os
 from io import BytesIO
 from urllib.parse import urlparse
 from urllib.request import urlopen
+import ssl
 
 from ufoLib.plistlib import readPlistFromString
 
@@ -151,7 +152,8 @@ class BaseExtensionItem(object):
         try:
             # try to download the zip file
             # and fail silently with a custom error message
-            response = urlopen(zipPath, timeout=5)
+            context = ssl._create_unverified_context()
+            response = urlopen(zipPath, timeout=5, context=context)
             contents = response.read()
             response.close()
         except Exception as message:
@@ -334,7 +336,8 @@ class ExtensionRepository(BaseExtensionItem):
         try:
             # try to download the info.plist
             # and fail silently with a custom message
-            response = urlopen(path, timeout=5)
+            context = ssl._create_unverified_context()
+            response = urlopen(path, timeout=5, context=context)
             infoContents = response.read()
             response.close()
         except Exception as message:
@@ -447,7 +450,8 @@ if __name__ == "__main__":
 
     def getExtensionData(url):
         try:
-            response = urlopen(url)
+            context = ssl._create_unverified_context()
+            response = urlopen(url, timeout=5, context=context)
             extensionData = json.loads(response.read())
         except Exception as message:
             print(message)

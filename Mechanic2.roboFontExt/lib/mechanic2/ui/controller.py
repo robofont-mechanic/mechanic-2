@@ -2,6 +2,7 @@ from AppKit import *
 import json
 
 from urllib.request import urlopen
+import ssl
 
 import vanilla
 from vanilla.vanillaBase import VanillaCallbackWrapper
@@ -43,7 +44,8 @@ class MCExtensionListItem(NSObject, metaclass=ClassNameIncrementer):
 
 def getExtensionData(url):
     try:
-        response = urlopen(url)
+        context = ssl._create_unverified_context()
+        response = urlopen(url, timeout=5, context=context)
         extensionData = json.loads(response.read())
     except Exception as e:
         extensionData = dict()
