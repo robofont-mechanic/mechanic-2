@@ -113,6 +113,9 @@ class BaseExtensionItem(object):
             self.extensionName(),
             self.extensionDeveloper(),
             self.extensionDescription(),
+            ("", "?update?")[self.extensionNeedsUpdate()],
+            ("", "?installed?")[self.isExtensionInstalled()],
+            ("", "?not_installed?")[not self.isExtensionInstalled()],
             " ".join(self.extensionTags())
         ]])
 
