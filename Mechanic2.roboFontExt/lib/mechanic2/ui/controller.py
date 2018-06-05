@@ -141,6 +141,9 @@ class MechanicController(BaseWindowController):
 
         progress.close()
         if checkForUpdates:
+            progress.update("Checking for updates...")
+            for item in wrappedItems:
+                item.extensionObject().extensionNeedsUpdate()
             self.w.checkForUpdates.setTitle(time.strftime("Checked at %H:%M"))
 
     def extensionListSelectionCallback(self, sender):
