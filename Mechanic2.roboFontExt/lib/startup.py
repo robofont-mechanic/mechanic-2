@@ -53,7 +53,7 @@ class MechanicObservers(object):
                 messageText="Mechanic would like to check for updates.",
                 informativeText="This will take some time. Opening Mechanic will also perform a check for updates.")
             if result:
-                MechanicController()
+                MechanicController(checkForUpdates=True)
 
 
 MechanicObservers()

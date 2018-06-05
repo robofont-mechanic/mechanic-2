@@ -47,7 +47,7 @@ def getExtensionData(url):
 
 class MechanicController(BaseWindowController):
 
-    def __init__(self, shouldLoad=True):
+    def __init__(self, checkForUpdates=False, shouldLoad=True):
 
         self.w = vanilla.Window((600, 300), "Mechanic 2.0", minSize=(550, 200))
 
@@ -92,6 +92,7 @@ class MechanicController(BaseWindowController):
             rowHeight=39
         )
 
+        self.w.checkForUpdates = vanilla.Button((10, -30, 160, 22), "Check For Updates", callback=self.checkForUpdatesCallback)
         self.w.button = vanilla.Button((-150, -30, -10, 22), "Install", callback=self.buttonCallback)
         self.w.uninstall = vanilla.Button((-280, -30, -160, 22), "Uninstall", callback=self.uninstallCallback)
 
@@ -99,9 +100,9 @@ class MechanicController(BaseWindowController):
         self.w.open()
 
         if shouldLoad:
-            self.loadExtensions()
+            self.loadExtensions(checkForUpdates)
 
-    def loadExtensions(self):
+    def loadExtensions(self, checkForUpdates=False):
         progress = self.startProgress("Loading extensions...")
 
         try:
@@ -112,14 +113,14 @@ class MechanicController(BaseWindowController):
                     clss = ExtensionStoreItem
                 for data in getExtensionData(urlStream):
                     try:
-                        item = MCExtensionListItem(clss(data))
+                        item = MCExtensionListItem(clss(data, checkForUpdates=checkForUpdates))
                         wrappedItems.append(item)
                     except Exception as error:
                         print(error)
 
             for singleExtension in getExtensionDefault("com.mechanic.singleExtensionItems"):
                 try:
-                    item = MCExtensionListItem(ExtensionYamlItem(singleExtension))
+                    item = MCExtensionListItem(ExtensionYamlItem(singleExtension, checkForUpdates=checkForUpdates))
                     wrappedItems.append(item)
                 except Exception as error:
                     print(error)
@@ -151,6 +152,9 @@ class MechanicController(BaseWindowController):
             item.openRemoteURL()
 
     # buttons
+
+    def checkForUpdatesCallback(self, sender):
+        self.loadExtensions(True)
 
     def buttonCallback(self, sender):
         item = self.getSelection()

@@ -16,11 +16,12 @@ from .mechacnicTools import remember, clearRemembered, findExtensionInRoot, getD
 
 class BaseExtensionItem(object):
 
-    def __init__(self, data):
+    def __init__(self, data, checkForUpdates=True):
         valid, report = self.validateData(data)
         if not valid:
             raise ExtensionRepoError(report)
         self._data = data
+        self._shouldCheckForUpdates = checkForUpdates
         self._init()
 
     def _init(self):
@@ -121,6 +122,8 @@ class BaseExtensionItem(object):
         """
         Return bool if the extension needs an update.
         """
+        if not self._shouldCheckForUpdates:
+            return False
         # get the version from the repository
         remoteVersion = self.remoteVersion()
         if remoteVersion is None:
@@ -438,8 +441,7 @@ class ExtensionStoreItem(BaseExtensionItem):
 
 class ExtensionYamlItem(ExtensionRepository):
 
-    def __init__(self, data):
+    def __init__(self, data, checkForUpdates=True):
         if "tags" in data:
             data["tags"] = list(data["tags"])
-        super(ExtensionYamlItem, self).__init__(data)
-
+        super(ExtensionYamlItem, self).__init__(data, checkForUpdates)
