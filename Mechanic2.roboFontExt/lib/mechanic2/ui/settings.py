@@ -69,8 +69,8 @@ class AddURLSheet(BaseWindowController):
             extensionData = getDataFromURL(url, formatter=json.loads)
             extensionData["extensions"]
         except Exception as e:
-            logger.info("Can not validate url '%s'" % url)
-            logger.info(e)
+            logger.error("Can not validate url '%s'" % url)
+            logger.error(e)
             return False, "Unable to read the stream."
         if url in self._existingURLs:
             return False, "Duplicated stream."
@@ -212,8 +212,8 @@ class Settings(BaseWindowController):
                         ExtensionYamlItem(item)
                         items.append(item)
                 except Exception as e:
-                    logger.info("Can read single extension item '%s'" % path)
-                    logger.info(e)
+                    logger.error("Can read single extension item '%s'" % path)
+                    logger.error(e)
 
             self.w.singleExtenions.extend(items)
         self.showGetFile(["mechanic"], callback=_addSingleExtension, allowsMultipleSelection=True)
