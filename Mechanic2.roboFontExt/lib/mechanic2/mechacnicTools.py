@@ -8,6 +8,7 @@ class ExtensionRepoError(Exception):
 
 
 def getDataFromURL(url, formatter=None):
+    url = url.replace(" ", "%20")
     context = ssl._create_unverified_context()
     response = urlopen(url, timeout=5, context=context)
     data = response.read()

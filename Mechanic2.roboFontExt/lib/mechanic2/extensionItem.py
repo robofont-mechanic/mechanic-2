@@ -6,12 +6,16 @@ import shutil
 import os
 from io import BytesIO
 from urllib.parse import urlparse
+import logging
 
 from ufoLib.plistlib import readPlistFromString
 
 from mojo.extensions import ExtensionBundle
 
 from .mechacnicTools import remember, clearRemembered, findExtensionInRoot, getDataFromURL, ExtensionRepoError
+
+
+logger = logging.getLogger("Mechanic")
 
 
 class BaseExtensionItem(object):
@@ -86,7 +90,12 @@ class BaseExtensionItem(object):
     def extensionIcon(self):
         imageURL = self._data.get("icon", None)
         if imageURL:
-            data = getDataFromURL(imageURL)
+            try:
+                data = getDataFromURL(imageURL)
+            except Exception as e:
+                logger.error("Could not download the image from '%s'" % imageURL)
+                logger.error(e)
+                return None
             if data is None:
                 return None
             data = AppKit.NSData.dataWithBytes_length_(data, len(data))
@@ -153,9 +162,11 @@ class BaseExtensionItem(object):
             # try to download the zip file
             # and fail silently with a custom error message
             contents = getDataFromURL(zipPath)
-        except Exception as message:
-            print(message)
-            raise ExtensionRepoError("Could not download the extension zip file for: '%s'" % self.extensionName)
+        except Exception as e:
+            message = "Could not download the extension zip file for: '%s'" % self.extensionName
+            logger.error(message)
+            logger.error(e)
+            raise ExtensionRepoError(message)
         # create a temp folder
         tempFolder = tempfile.mkdtemp()
         try:
@@ -163,9 +174,11 @@ class BaseExtensionItem(object):
             # and fail silently with a custom message
             with zipfile.ZipFile(BytesIO(contents)) as z:
                 z.extractall(tempFolder)
-        except Exception as message:
-            print(message)
-            raise ExtensionRepoError("Could not extract the extension zip file for: '%s'" % self.extensionName)
+        except Exception as e:
+            message = "Could not extract the extension zip file for: '%s'" % self.extensionName
+            logger.error(message)
+            logger.error(e)
+            raise ExtensionRepoError(message)
         # find the extension path
         extensionPath = findExtensionInRoot(os.path.basename(self.extensionPath), tempFolder)
         if extensionPath:
@@ -175,7 +188,9 @@ class BaseExtensionItem(object):
             self.resetRemembered()
         else:
             # raise an custom error when the extension is not found in the zip
-            raise ExtensionRepoError("Could not find the extension: '%s'" % self.extensionPath)
+            message = "Could not find the extension: '%s'" % self.extensionPath
+            logger.error(message)
+            raise ExtensionRepoError(message)
         # remove the temp folder with the extracted zip
         shutil.rmtree(tempFolder)
 
@@ -336,17 +351,19 @@ class ExtensionRepository(BaseExtensionItem):
             # try to download the info.plist
             # and fail silently with a custom message
             infoContents = getDataFromURL(path)
-        except Exception as message:
+        except Exception as e:
             # can not get the contens of the info.plist file
-            print(message)
+            logger.error("Cannot read info.plist for '%s'" % self.extensionName())
+            logger.error(e)
             return None
         try:
             # try to parse the info.plist from string
             # and fail silently with a custom message
             info = readPlistFromString(infoContents)
-        except Exception as message:
+        except Exception as e:
             # can not parse the plist
-            print("%s for '%s'" % (message, path))
+            logger.error("Cannot parse info.plist for '%s'" % self.extensionName())
+            logger.error(e)
             return None
         # get the version
         version = info.get("version")

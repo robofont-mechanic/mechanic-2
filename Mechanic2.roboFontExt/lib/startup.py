@@ -1,4 +1,5 @@
 import yaml
+import logging
 
 from vanilla.dialogs import message, askYesNo
 
@@ -8,6 +9,9 @@ from mojo.extensions import setExtensionDefault, getExtensionDefault
 
 from mechanic2.extensionItem import ExtensionYamlItem
 from mechanic2.ui.controller import MechanicController
+
+
+logger = logging.getLogger("Mechanic")
 
 fileExtension = "mechanic"
 
@@ -29,7 +33,10 @@ class MechanicObservers(object):
             try:
                 with open(path, "rb") as f:
                     item = yaml.load(f.read())
-
+            except Exception as e:
+                logger.error("Cannot read '%s' file" % path)
+                logger.error(e)
+            try:
                 ExtensionYamlItem(item)
                 if item not in singleItems:
                     singleItems.append(item)
@@ -40,7 +47,8 @@ class MechanicObservers(object):
                     title = "Duplicated mechanic file."
                     text = "The extension '%s' is not to mechanic" % path
             except Exception as e:
-                print(e)
+                logger.error("Cannot parse '%s' file" % path)
+                logger.error(e)
                 title = "Reading '%s' failed." % path
                 text = "See the output window for a detailed traceback."
             message(title, text)

@@ -1,5 +1,7 @@
 from AppKit import *
 import json
+import logging
+import time
 
 import vanilla
 from defconAppKit.windows.baseWindow import BaseWindowController
@@ -11,6 +13,9 @@ from mechanic2.ui.formatters import MCExtensionDescriptionFormatter
 from mechanic2.ui.settings import Settings, extensionStoreDataURL
 from mechanic2.extensionItem import ExtensionRepository, ExtensionStoreItem, ExtensionYamlItem
 from mechanic2.mechacnicTools import getDataFromURL
+
+
+logger = logging.getLogger("Mechanic")
 
 
 class MCExtensionListItem(NSObject):
@@ -40,7 +45,8 @@ def getExtensionData(url):
     try:
         extensionData = getDataFromURL(url, formatter=json.loads)
     except Exception as e:
-        print(e)
+        logger.error("Cannot read url '%s'" % url)
+        logger.error(e)
         extensionData = dict()
     return extensionData.get("extensions", [])
 
@@ -105,31 +111,37 @@ class MechanicController(BaseWindowController):
     def loadExtensions(self, checkForUpdates=False):
         progress = self.startProgress("Loading extensions...")
 
-        try:
-            wrappedItems = []
-            for urlStream in getExtensionDefault("com.mechanic.urlstreams"):
-                clss = ExtensionRepository
-                if urlStream == extensionStoreDataURL:
-                    clss = ExtensionStoreItem
-                for data in getExtensionData(urlStream):
-                    try:
-                        item = MCExtensionListItem(clss(data, checkForUpdates=checkForUpdates))
-                        wrappedItems.append(item)
-                    except Exception as error:
-                        print(error)
-
-            for singleExtension in getExtensionDefault("com.mechanic.singleExtensionItems"):
+        wrappedItems = []
+        for urlStream in getExtensionDefault("com.mechanic.urlstreams"):
+            clss = ExtensionRepository
+            if urlStream == extensionStoreDataURL:
+                clss = ExtensionStoreItem
+            for data in getExtensionData(urlStream):
                 try:
-                    item = MCExtensionListItem(ExtensionYamlItem(singleExtension, checkForUpdates=checkForUpdates))
+                    item = MCExtensionListItem(clss(data, checkForUpdates=checkForUpdates))
                     wrappedItems.append(item)
-                except Exception as error:
-                    print(error)
+                except Exception as e:
+                    logger.error("Creating extension item '%s' from url '%s' failed." % (data.get("extensionName", "unknow"), urlStream))
+                    logger.error(e)
 
-            progress.update("Setting Extensions...")
+        for singleExtension in getExtensionDefault("com.mechanic.singleExtensionItems"):
+            try:
+                item = MCExtensionListItem(ExtensionYamlItem(singleExtension, checkForUpdates=checkForUpdates))
+                wrappedItems.append(item)
+            except Exception as e:
+                logger.error("Creating single extension item '%s' failed." % singleExtension.get("extensionName", "unknow"))
+                logger.error(e)
+
+        progress.update("Setting Extensions...")
+        try:
             self.w.extensionList.set(wrappedItems)
-        except Exception as error:
-            print(error)
+        except Exception as e:
+            logger.error("Cannot set items in mechanic list.")
+            logger.error(e)
+
         progress.close()
+        if checkForUpdates:
+            self.w.checkForUpdates.setTitle(time.strftime("Checked at %H:%M"))
 
     def extensionListSelectionCallback(self, sender):
         item = self.getSelection()
@@ -141,7 +153,9 @@ class MechanicController(BaseWindowController):
             self.w.button.enable(True)
             self.w.uninstall.enable(item.isExtensionInstalled())
 
-            if item.isExtensionFromStore():
+            if item.isExtensionInstalled() and item.extensionNeedsUpdate():
+                self.w.button.setTitle("Update")
+            elif item.isExtensionFromStore():
                 self.w.button.setTitle("Purchase")
             else:
                 self.w.button.setTitle("Install")

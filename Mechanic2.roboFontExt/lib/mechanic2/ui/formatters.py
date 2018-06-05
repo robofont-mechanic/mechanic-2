@@ -1,4 +1,8 @@
 import AppKit
+import logging
+
+
+logger = logging.getLogger("Mechanic")
 
 
 class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
@@ -62,7 +66,8 @@ class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
             description = AppKit.NSAttributedString.alloc().initWithString_attributes_(obj.extensionDescription() or u'\u2014', attrs)
             string.appendAttributedString_(description)
         except Exception as e:
-            print(e)
+            logger.error("Can not format '%s'" % obj)
+            logger.error(e)
 
         return string
 
