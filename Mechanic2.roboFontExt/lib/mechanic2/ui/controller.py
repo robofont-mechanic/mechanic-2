@@ -1,25 +1,19 @@
 from AppKit import *
 import json
 
-from urllib.request import urlopen
-import ssl
-
 import vanilla
-from vanilla.vanillaBase import VanillaCallbackWrapper
 from defconAppKit.windows.baseWindow import BaseWindowController
-from defconAppKit.windows.progressWindow import ProgressWindow
 
 from mojo.extensions import getExtensionDefault
 
 from mechanic2.ui.cells import MCExtensionCirleCell, MCImageTextFieldCell
 from mechanic2.ui.formatters import MCExtensionDescriptionFormatter
-from mechanic2.ui.settings import Settings
-from mechanic2.extensionItem import ExtensionRepository, ExtensionStoreItem
+from mechanic2.ui.settings import Settings, extensionStoreDataURL
+from mechanic2.extensionItem import ExtensionRepository, ExtensionStoreItem, ExtensionYamlItem
+from mechanic2.mechacnicTools import getDataFromURL
 
-from lib.tools.debugTools import ClassNameIncrementer
 
-
-class MCExtensionListItem(NSObject, metaclass=ClassNameIncrementer):
+class MCExtensionListItem(NSObject):
 
     def __new__(cls, *args, **kwargs):
         return cls.alloc().init()
@@ -44,17 +38,11 @@ class MCExtensionListItem(NSObject, metaclass=ClassNameIncrementer):
 
 def getExtensionData(url):
     try:
-        context = ssl._create_unverified_context()
-        response = urlopen(url, timeout=5, context=context)
-        extensionData = json.loads(response.read())
+        extensionData = getDataFromURL(url, formatter=json.loads)
     except Exception as e:
-        extensionData = dict()
         print(e)
+        extensionData = dict()
     return extensionData.get("extensions", [])
-
-
-extensionStoreDataURL = "http://extensionstore.robofont.com/data.json"
-mechanicDataURL = "https://robofont-mechanic.github.io/mechanic2/api/extensions.json"
 
 
 class MechanicController(BaseWindowController):
@@ -111,30 +99,36 @@ class MechanicController(BaseWindowController):
         self.w.open()
 
         if shouldLoad:
-            progress = self.startProgress("Loading extensions...")
+            self.loadExtensions()
 
-            try:
-                sources = [
-                    (extensionStoreDataURL, ExtensionStoreItem),
-                    (mechanicDataURL, ExtensionRepository),
-                ]
-                for externalSources in getExtensionDefault("com.mechanic.externalURLs", []):
-                    sources.append((externalSources, ExtensionRepository))
+    def loadExtensions(self):
+        progress = self.startProgress("Loading extensions...")
 
-                progress.update("Parsing Extensions...")
-
-                wrappedItems = []
-                for url, itemClass in sources:
-                    for data in getExtensionData(url):
-                        item = MCExtensionListItem(itemClass(data))
+        try:
+            wrappedItems = []
+            for urlStream in getExtensionDefault("com.mechanic.urlstreams"):
+                clss = ExtensionRepository
+                if urlStream == extensionStoreDataURL:
+                    clss = ExtensionStoreItem
+                for data in getExtensionData(urlStream):
+                    try:
+                        item = MCExtensionListItem(clss(data))
                         wrappedItems.append(item)
+                    except Exception as error:
+                        print(error)
 
-                progress.update("Setting Extensions...")
-                self.w.extensionList.set(wrappedItems)
-            except Exception as error:
-                print(error)
+            for singleExtension in getExtensionDefault("com.mechanic.singleExtensionItems"):
+                try:
+                    item = MCExtensionListItem(ExtensionYamlItem(singleExtension))
+                    wrappedItems.append(item)
+                except Exception as error:
+                    print(error)
 
-            progress.close()
+            progress.update("Setting Extensions...")
+            self.w.extensionList.set(wrappedItems)
+        except Exception as error:
+            print(error)
+        progress.close()
 
     def extensionListSelectionCallback(self, sender):
         item = self.getSelection()
@@ -176,10 +170,13 @@ class MechanicController(BaseWindowController):
         item.extensionUninstall()
         self.w.extensionList.getNSTableView().reloadData()
 
+    def settingsCallback(self, sender):
+        self.loadExtensions()
+
     # toolbar
 
     def toolbarSettings(self, sender):
-        Settings(self.w)
+        Settings(self.w, callback=self.settingsCallback)
 
     def toolbarSearch(self, sender):
         search = sender.get()

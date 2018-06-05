@@ -1,24 +1,17 @@
 import AppKit
 from distutils.version import LooseVersion
 import zipfile
-import json
 import tempfile
 import shutil
 import os
 from io import BytesIO
 from urllib.parse import urlparse
-from urllib.request import urlopen
-import ssl
 
 from ufoLib.plistlib import readPlistFromString
 
 from mojo.extensions import ExtensionBundle
 
-from .mechacnicTools import remember, clearRemembered, findExtensionInRoot
-
-
-class ExtensionRepoError(Exception):
-    pass
+from .mechacnicTools import remember, clearRemembered, findExtensionInRoot, getDataFromURL, ExtensionRepoError
 
 
 class BaseExtensionItem(object):
@@ -46,7 +39,7 @@ class BaseExtensionItem(object):
         """
         Return the extension bundle name.
         """
-        return self._data["name"]
+        return self._data["extensionName"]
 
     def extensionDeveloper(self):
         """
@@ -92,14 +85,10 @@ class BaseExtensionItem(object):
     def extensionIcon(self):
         imageURL = self._data.get("icon", None)
         if imageURL:
-            try:
-                context = ssl._create_unverified_context()
-                response = urlopen(imageURL, timeout=5, context=context)
-                contents = response.read()
-            except Exception as message:
-                print(message)
+            data = getDataFromURL(imageURL)
+            if data is None:
                 return None
-            data = AppKit.NSData.dataWithBytes_length_(contents, len(contents))
+            data = AppKit.NSData.dataWithBytes_length_(data, len(data))
             image = AppKit.NSImage.alloc().initWithData_(data)
             return image
         return None
@@ -156,13 +145,11 @@ class BaseExtensionItem(object):
             return
         # get the zip path
         zipPath = self.remoteZipPath()
+
         try:
             # try to download the zip file
             # and fail silently with a custom error message
-            context = ssl._create_unverified_context()
-            response = urlopen(zipPath, timeout=5, context=context)
-            contents = response.read()
-            response.close()
+            contents = getDataFromURL(zipPath)
         except Exception as message:
             print(message)
             raise ExtensionRepoError("Could not download the extension zip file for: '%s'" % self.extensionName)
@@ -216,7 +203,9 @@ class BaseExtensionItem(object):
                     report.append("'%s' key is required" % key)
                 elif key in data and not isinstance(data[key], clss):
                     valid.append(False)
-                    report.append("'%s' key must be a '%s'" % (key, clss.__name__))
+                    if isinstance(clss, tuple):
+                        clssName = " or ".join([c.__name__ for c in clss])
+                    report.append("'%s' key must be a '%s', a '%s' is given." % (key, clssName, data[key].__class__.__name__))
 
         _validateKeys(self.validationRequiredKeys, isRequired=True)
         _validateKeys(self.validationNotRequiredKeys, isRequired=False)
@@ -258,11 +247,11 @@ class ExtensionRepository(BaseExtensionItem):
     validationNotRequiredKeys = [
         ("infoPath", str),
         ("zipPath", str),
-        ("name", str),
+        ("extensionName", str),
         ("developer", str),
         ("developerURL", str),
         ("description", str),
-        ("tags", list),
+        ("tags", (list, tuple)),
     ]
 
     def _init(self):
@@ -272,8 +261,8 @@ class ExtensionRepository(BaseExtensionItem):
         self._remoteZipPath = self._data.get("zipPath")
         self._remoteInfoPath = self._data.get("infoPath")
 
-        if "name" not in self._data:
-            self._data["name"] = self.extensionPath.split("/")[-1]
+        if "extensionName" not in self._data:
+            self._data["extensionName"] = self.extensionPath.split("/")[-1]
 
         self.repositoryParsedURL = urlparse(self.repository)
 
@@ -343,10 +332,7 @@ class ExtensionRepository(BaseExtensionItem):
         try:
             # try to download the info.plist
             # and fail silently with a custom message
-            context = ssl._create_unverified_context()
-            response = urlopen(path, timeout=5, context=context)
-            infoContents = response.read()
-            response.close()
+            infoContents = getDataFromURL(path)
         except Exception as message:
             # can not get the contens of the info.plist file
             print(message)
@@ -401,7 +387,7 @@ class ExtensionStoreItem(BaseExtensionItem):
     ]
 
     validationNotRequiredKeys = [
-        ("name", str),
+        ("extensionName", str),
         ("developer", str),
         ("developerURL", str),
         ("description", str),
@@ -448,3 +434,12 @@ class ExtensionStoreItem(BaseExtensionItem):
     def openRemotePurchageURL(self):
         url = self.remotePurchageURL()
         self.openUrl(url)
+
+
+class ExtensionYamlItem(ExtensionRepository):
+
+    def __init__(self, data):
+        if "tags" in data:
+            data["tags"] = list(data["tags"])
+        super(ExtensionYamlItem, self).__init__(data)
+
