@@ -19,7 +19,7 @@ genericListPboardType = "mechanicListPBoardType"
 
 
 extensionStoreDataURL = "http://extensionstore.robofont.com/data.json"
-mechanicDataURL = "https://robofont-mechanic.github.io/mechanic2/api/extensions.json"
+mechanicDataURL = "https://robofont-mechanic.github.io/mechanic-2-server/api/extensions.json"
 
 
 def registerMechanicDefaults(reset=False):
