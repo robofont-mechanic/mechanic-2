@@ -353,7 +353,7 @@ class ExtensionRepository(BaseExtensionItem):
             infoContents = getDataFromURL(path)
         except Exception as e:
             # can not get the contens of the info.plist file
-            logger.error("Cannot read info.plist for '%s'" % self.extensionName())
+            logger.error("Cannot read '%s' for '%s'" % (path, self.extensionName()))
             logger.error(e)
             return None
         try:
@@ -362,7 +362,7 @@ class ExtensionRepository(BaseExtensionItem):
             info = readPlistFromString(infoContents)
         except Exception as e:
             # can not parse the plist
-            logger.error("Cannot parse info.plist for '%s'" % self.extensionName())
+            logger.error("Cannot parse '%s' for '%s'" % (path, self.extensionName()))
             logger.error(e)
             return None
         # get the version
