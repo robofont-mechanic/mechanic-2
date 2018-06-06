@@ -215,8 +215,14 @@ class MechanicController(BaseWindowController):
         if not search:
             arrayController.setFilterPredicate_(None)
         else:
-            search = 'extensionSearchString CONTAINS "%s"' % search.lower()
-            predicate = NSPredicate.predicateWithFormat_(search)
+            searches = search.lower().strip().split(" ")
+            print(searches)
+            query = []
+            for search in searches:                
+                query.append('extensionSearchString CONTAINS "%s"' % search)
+            query = " AND ".join(query)
+            print(query)
+            predicate = NSPredicate.predicateWithFormat_(query)
             arrayController.setFilterPredicate_(predicate)
 
     # helpers
