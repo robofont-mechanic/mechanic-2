@@ -94,6 +94,7 @@ class Settings(BaseWindowController):
     def __init__(self, parentWindow, callback=None, debug=False):
 
         self._callback = callback
+        self._shouldCallCallback = False
 
         if debug:
             self.w = vanilla.Window((400, 420))
@@ -201,6 +202,7 @@ class Settings(BaseWindowController):
             self.addURL()
         elif i == 1:
             self.genericDelItem(self.w.urls)
+        self._shouldCallCallback = True
 
     def addSingleExtension(self):
         def _addSingleExtension(paths):
@@ -224,19 +226,21 @@ class Settings(BaseWindowController):
             self.addSingleExtension()
         elif i == 1:
             self.genericDelItem(self.w.singleExtenions)
+        self._shouldCallCallback = True
 
     def resetCallback(self, sender):
         def _reset(value):
             if value:
                 registerMechanicDefaults(reset=True)
                 self.getFromDefaults()
+                self._shouldCallCallback = True
 
         self.showAskYesNo("Resetting Mechanic 2 defaults", "This will remove existing data.", callback=_reset)
 
     def okCallback(self, sender):
         self.saveToDefaults()
         self.closeCallback(sender)
-        if self._callback:
+        if self._shouldCallCallback and self._callback:
             self._callback(self)
 
     def closeCallback(self, sender):
