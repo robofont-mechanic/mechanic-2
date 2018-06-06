@@ -179,7 +179,7 @@ class MechanicController(BaseWindowController):
                 self.loadExtensions(True)
 
         if self._didCheckedForUpdates:
-            self.showAskYesNo("Check for updates, again?", "All extension have been checked not so long ago.", callback=_checkForUpdatesCallback)
+            self.showAskYesNo("Check for updates, again?", "All extensions have been checked not so long ago.", callback=_checkForUpdatesCallback)
         else:
             _checkForUpdatesCallback(True)
 
