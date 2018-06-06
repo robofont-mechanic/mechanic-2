@@ -105,6 +105,7 @@ class MechanicController(BaseWindowController):
         self.w.extensionList.setSelection([])
         self.w.open()
 
+        self._didCheckedForUpdates = False
         if shouldLoad:
             self.loadExtensions(checkForUpdates)
 
@@ -144,6 +145,7 @@ class MechanicController(BaseWindowController):
             for item in wrappedItems:
                 item.extensionObject().extensionNeedsUpdate()
             self.w.checkForUpdates.setTitle(time.strftime("Checked at %H:%M"))
+            self._didCheckedForUpdates = True
         progress.close()
         
     def extensionListSelectionCallback(self, sender):
@@ -171,7 +173,15 @@ class MechanicController(BaseWindowController):
     # buttons
 
     def checkForUpdatesCallback(self, sender):
-        self.loadExtensions(True)
+
+        def _checkForUpdatesCallback(value):
+            if value:
+                self.loadExtensions(True)
+
+        if self._didCheckedForUpdates:
+            self.showAskYesNo("Check for updates, again?", "All extension have been checked not so long ago.", callback=_checkForUpdatesCallback)
+        else:
+            _checkForUpdatesCallback(True)
 
     def buttonCallback(self, sender):
         item = self.getSelection()
