@@ -240,7 +240,7 @@ class BaseExtensionItem(object):
 
     def extensionBundle(self):
         # get the bundleName
-        bundleName = self.extensionName()
+        bundleName = self.extensionPath.split("/")[-1]
         # get the bundle
         return ExtensionBundle(bundleName)
 
