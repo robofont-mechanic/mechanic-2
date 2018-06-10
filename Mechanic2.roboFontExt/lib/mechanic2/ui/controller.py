@@ -222,7 +222,6 @@ class MechanicController(BaseWindowController):
             arrayController.setFilterPredicate_(None)
         else:
             searches = search.lower().strip().split(" ")
-            print(searches)
             query = []
             for search in searches:
                 query.append('extensionSearchString CONTAINS "%s"' % search)
