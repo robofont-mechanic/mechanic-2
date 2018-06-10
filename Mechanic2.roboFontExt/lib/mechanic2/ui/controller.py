@@ -6,7 +6,7 @@ import time
 import vanilla
 from defconAppKit.windows.baseWindow import BaseWindowController
 
-from mojo.extensions import getExtensionDefault
+from mojo.extensions import getExtensionDefault, setExtensionDefault
 
 from mechanic2.ui.cells import MCExtensionCirleCell, MCImageTextFieldCell
 from mechanic2.ui.formatters import MCExtensionDescriptionFormatter
@@ -139,15 +139,21 @@ class MechanicController(BaseWindowController):
         except Exception as e:
             logger.error("Cannot set items in mechanic list.")
             logger.error(e)
-        
+
         if checkForUpdates:
             progress.update("Checking for updates...")
+            progress.setTickCount(len(wrappedItems))
             for item in wrappedItems:
+                progress.update()
                 item.extensionObject().extensionNeedsUpdate()
-            self.w.checkForUpdates.setTitle(time.strftime("Checked at %H:%M"))
+            progress.setTickCount(None)
+            now = time.time()
+            setExtensionDefault("com.mechanic.lastUpdateCheck", now)
+            title = time.strftime("Checked at %H:%M", time.gmtime(now))
+            self.w.checkForUpdates.setTitle(title)
             self._didCheckedForUpdates = True
         progress.close()
-        
+
     def extensionListSelectionCallback(self, sender):
         item = self.getSelection()
         if item is None:
@@ -218,7 +224,7 @@ class MechanicController(BaseWindowController):
             searches = search.lower().strip().split(" ")
             print(searches)
             query = []
-            for search in searches:                
+            for search in searches:
                 query.append('extensionSearchString CONTAINS "%s"' % search)
             query = " AND ".join(query)
             print(query)

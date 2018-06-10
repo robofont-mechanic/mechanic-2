@@ -26,7 +26,8 @@ def registerMechanicDefaults(reset=False):
     defaults = {
         "com.mechanic.urlstreams": [extensionStoreDataURL, mechanicDataURL],
         "com.mechanic.checkForUpdate": True,
-        "com.mechanic.singleExtensionItems": []
+        "com.mechanic.singleExtensionItems": [],
+        "com.mechanic.lastUpdateCheck": 0,
     }
     if reset:
         for key in defaults:

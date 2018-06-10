@@ -1,7 +1,8 @@
 import yaml
 import logging
+import time
 
-from vanilla.dialogs import message, askYesNo
+from vanilla.dialogs import message, BaseMessageDialog
 
 from mojo.tools import registerFileExtension
 from mojo.events import addObserver
@@ -56,12 +57,22 @@ class MechanicObservers(object):
 
     def applicationDidFinishLaunching(self, notification):
         shouldCheckForUpdates = getExtensionDefault("com.mechanic.checkForUpdate")
-        if shouldCheckForUpdates:
-            result = askYesNo(
-                messageText="Mechanic would like to check for updates.",
-                informativeText="This will take some time. Opening Mechanic will also perform a check for updates.")
-            if result:
+        lastCheck = getExtensionDefault("com.mechanic.lastUpdateCheck")
+        oneDay = 60 * 60 * 24
+        now = time.time()
+        if shouldCheckForUpdates and lastCheck + oneDay < now:
+            messageText = "Mechanic would like to check for updates."
+            informativeText = "This will take some time. Opening Mechanic will also perform a check for updates."
+
+            alert = BaseMessageDialog.alloc().initWithMessageText_informativeText_alertStyle_buttonTitlesValues_window_resultCallback_(
+                messageText=messageText,
+                informativeText=informativeText,
+                buttonTitlesValues=[("Now", 1), ("Later", 0)]
+            )
+            if alert._value:
                 MechanicController(checkForUpdates=True)
+
+            setExtensionDefault("com.mechanic.lastUpdateCheck", now)
 
 
 MechanicObservers()
