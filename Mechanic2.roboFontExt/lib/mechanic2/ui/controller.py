@@ -195,7 +195,7 @@ class MechanicController(BaseWindowController):
             return
 
         if item.isExtensionFromStore():
-            item.openRemotePurchageURL()
+            item.openRemotePurchaseURL()
         else:
             item.remoteInstall()
             self.w.extensionList.getNSTableView().reloadData()
