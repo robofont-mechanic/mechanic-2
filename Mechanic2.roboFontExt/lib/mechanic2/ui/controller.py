@@ -199,6 +199,7 @@ class MechanicController(BaseWindowController):
         else:
             item.remoteInstall()
             self.w.extensionList.getNSTableView().reloadData()
+            self.w.uninstall.enable(True)
 
     def uninstallCallback(self, sender):
         item = self.getSelection()
@@ -206,6 +207,7 @@ class MechanicController(BaseWindowController):
             return
         item.extensionUninstall()
         self.w.extensionList.getNSTableView().reloadData()
+        self.w.uninstall.enable(False)
 
     def settingsCallback(self, sender):
         self.loadExtensions()
