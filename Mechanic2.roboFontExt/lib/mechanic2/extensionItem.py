@@ -149,7 +149,7 @@ class BaseExtensionItem(object):
 
     # download and install
 
-    def remoteInstall(self, forcedUpdate=False):
+    def remoteInstall(self, forcedUpdate=False, showDialogs=True):
         """
         Install the extension from the remote. This will call `extensionNeedsUpdate()`
 
@@ -187,7 +187,7 @@ class BaseExtensionItem(object):
         if extensionPath:
             # if found get the bundle and install it
             bundle = ExtensionBundle(path=extensionPath)
-            bundle.install()
+            bundle.install(showMessages=showDialogs)
             self.resetRemembered()
         else:
             # raise an custom error when the extension is not found in the zip
@@ -250,13 +250,21 @@ class BaseExtensionItem(object):
             bundle.deinstall()
             self.resetRemembered()
 
-    def openUrl(self, url):
+    def openUrl(self, url, background=False):
         ws = AppKit.NSWorkspace.sharedWorkspace()
-        ws.openURL_(AppKit.NSURL.URLWithString_(url))
+        option = AppKit.NSWorkspaceLaunchDefault
+        if background:
+            option = AppKit.NSWorkspaceLaunchWithoutActivation
+        ws.openURL_options_configuration_error_(
+            AppKit.NSURL.URLWithString_(url),
+            option,
+            dict(),
+            None
+        )
 
-    def openRemoteURL(self):
+    def openRemoteURL(self, background=False):
         url = self.remoteURL()
-        self.openUrl(url)
+        self.openUrl(url, background=background)
 
 
 class ExtensionRepository(BaseExtensionItem):
@@ -454,9 +462,9 @@ class ExtensionStoreItem(BaseExtensionItem):
     def remotePurchageURL(self):
         return self._data["purchaseURL"]
 
-    def openRemotePurchageURL(self):
+    def openRemotePurchageURL(self, background=False):
         url = self.remotePurchageURL()
-        self.openUrl(url)
+        self.openUrl(url, background=background)
 
 
 class ExtensionYamlItem(ExtensionRepository):
