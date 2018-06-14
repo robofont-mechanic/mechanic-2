@@ -80,7 +80,7 @@ class MechanicController(BaseWindowController):
 
         # building extension list
 
-        columnDescriptions = columnDescriptions = [
+        columnDescriptions = [
             dict(title="", key="extensionController", width=25, cell=MCExtensionCirleCell.alloc().init(), editable=False),
             dict(title="Extension", key="extensionController",
                 cell=MCImageTextFieldCell.alloc().init(),
@@ -94,13 +94,19 @@ class MechanicController(BaseWindowController):
             showColumnTitles=False,
             selectionCallback=self.extensionListSelectionCallback,
             doubleClickCallback=self.extensionListDoubleClickCallback,
-            allowsMultipleSelection=False,
+            allowsMultipleSelection=True,
             rowHeight=39
         )
 
-        self.w.checkForUpdates = vanilla.Button((10, -30, 160, 22), "Check For Updates", callback=self.checkForUpdatesCallback)
-        self.w.button = vanilla.Button((-150, -30, -10, 22), "Install", callback=self.buttonCallback)
-        self.w.uninstall = vanilla.Button((-280, -30, -160, 22), "Uninstall", callback=self.uninstallCallback)
+        self.w.checkForUpdates = vanilla.Button((10, -30, 160, 22), "Check For Updates", callback=self.checkForUpdatesCallback, sizeStyle="small")
+
+        self.w.purchaseButton = vanilla.Button((10, -30, 100, 22), "Purchase", callback=self.purchaseCallback)
+        self.w.installButton = vanilla.Button((10, -30, 100, 22), "Install", callback=self.installCallback)
+        self.w.uninstallButton = vanilla.Button((10, -30, 120, 22), "Uninstall", callback=self.uninstallCallback)
+        self.w.updateButton = vanilla.Button((10, -30, 110, 22), "Update", callback=self.updateCallback)
+        allButtons = [self.w.purchaseButton, self.w.installButton, self.w.uninstallButton, self.w.updateButton]
+        for button in allButtons:
+            button.show(False)
 
         self.w.extensionList.setSelection([])
         self.w.open()
@@ -155,26 +161,60 @@ class MechanicController(BaseWindowController):
         progress.close()
 
     def extensionListSelectionCallback(self, sender):
-        item = self.getSelection()
-        if item is None:
-            self.w.button.setTitle("Install")
-            self.w.button.enable(False)
-            self.w.uninstall.enable(False)
-        else:
-            self.w.button.enable(True)
-            self.w.uninstall.enable(item.isExtensionInstalled())
+        items = self.getSelection()
+        multiSelection = len(items) > 1
 
-            if item.isExtensionInstalled() and item.extensionNeedsUpdate():
-                self.w.button.setTitle("Update")
-            elif item.isExtensionFromStore():
-                self.w.button.setTitle("Purchase")
-            else:
-                self.w.button.setTitle("Install")
+        notInstalled = [item for item in items if not item.isExtensionInstalled()]
+        installed = [item for item in items if item.isExtensionInstalled()]
+        needsUpdate = [item for item in installed if item.extensionNeedsUpdate()]
+        notInstalledStore = [item for item in notInstalled if item.isExtensionFromStore()]
+        notInstalledNotStore = [item for item in notInstalled if not item.isExtensionFromStore()]
+
+        buttons = []
+
+        if notInstalledStore:
+            title = "Purchase"
+            if multiSelection:
+                title += " (%s)" % len(notInstalledStore)
+            buttons.append((title, self.w.purchaseButton))
+
+        if notInstalledNotStore:
+            title = "Install"
+            if multiSelection:
+                title += " (%s)" % len(notInstalledNotStore)
+            buttons.append((title, self.w.installButton))
+
+        if needsUpdate:
+            title = "Update"
+            if multiSelection:
+                title += " (%s)" % len(needsUpdate)
+            buttons.append((title, self.w.updateButton))
+
+        if installed:
+            title = "Uninstall"
+            if multiSelection:
+                title += " (%s)" % len(installed)
+            buttons.append((title, self.w.uninstallButton))
+
+        allButtons = [self.w.purchaseButton, self.w.installButton, self.w.uninstallButton, self.w.updateButton]
+
+        left = -10
+        for title, button in buttons:
+            button.show(True)
+            _, top, width, height = button.getPosSize()
+            button.setPosSize((left - width, top, width, height))
+            button.setTitle(title)
+            left -= width + 10
+            allButtons.remove(button)
+
+        for button in allButtons:
+            button.show(False)
 
     def extensionListDoubleClickCallback(self, sender):
-        item = self.getSelection()
-        if item:
-            item.openRemoteURL()
+        items = self.getSelection()
+        multiSelection = len(items) > 1
+        for item in items:
+            item.openRemoteURL(multiSelection)
 
     # buttons
 
@@ -189,23 +229,46 @@ class MechanicController(BaseWindowController):
         else:
             _checkForUpdatesCallback(True)
 
-    def buttonCallback(self, sender):
-        item = self.getSelection()
-        if item is None:
-            return
+    def purchaseCallback(self, sender):
+        items = self.getSelection()
+        multiSelection = len(items) > 1
+        items = [item for item in items if item.isExtensionFromStore() and not item.isExtensionInstalled()]
+        for item in items:
+            item.openRemotePurchageURL(multiSelection)
 
-        if item.isExtensionFromStore():
-            item.openRemotePurchageURL()
-        else:
-            item.remoteInstall()
-            self.w.extensionList.getNSTableView().reloadData()
+    def installCallback(self, sender):
+        items = self.getSelection()
+        multiSelection = len(items) > 1
+        items = [item for item in items if not item.isExtensionFromStore() and not item.isExtensionInstalled()]
+        if not items:
+            return
+        for item in items:
+            item.remoteInstall(multiSelection)
+        self.w.extensionList.getNSTableView().reloadData()
+        if multiSelection:
+            message = ", ".join([item.extensionName() for item in items])
+            self.showMessage("Installing multiple extensions:", message)
 
     def uninstallCallback(self, sender):
-        item = self.getSelection()
-        if item is None:
+        items = self.getSelection()
+        items = [item for item in items if item.isExtensionInstalled()]
+        if not items:
             return
-        item.extensionUninstall()
+        for item in items:
+            item.extensionUninstall()
         self.w.extensionList.getNSTableView().reloadData()
+
+    def updateCallback(self, sender):
+        items = self.getSelection()
+        items = [item for item in items if item.isExtensionInstalled() and item.extensionNeedsUpdate()]
+        if not items:
+            return
+        for item in items:
+            item.remoteInstall(multiSelection)
+        self.w.extensionList.getNSTableView().reloadData()
+        if multiSelection:
+            message = ", ".join([item.extensionName() for item in items])
+            self.showMessage("Updating multiple extensions:", message)
 
     def settingsCallback(self, sender):
         self.loadExtensions()
@@ -235,5 +298,5 @@ class MechanicController(BaseWindowController):
         arrayController = self.w.extensionList.getNSTableView().dataSource()
         selection = arrayController.selectedObjects()
         if selection:
-            return selection[0].extensionObject()
-        return None
+            return [item.extensionObject() for item in selection]
+        return []
