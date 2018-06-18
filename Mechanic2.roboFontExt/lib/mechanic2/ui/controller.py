@@ -234,7 +234,7 @@ class MechanicController(BaseWindowController):
         multiSelection = len(items) > 1
         items = [item for item in items if item.isExtensionFromStore() and not item.isExtensionInstalled()]
         for item in items:
-            item.openRemotePurchageURL(multiSelection)
+            item.openRemotePurchaseURL(multiSelection)
 
     def installCallback(self, sender):
         items = self.getSelection()
