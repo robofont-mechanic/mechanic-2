@@ -5,6 +5,7 @@ import time
 from vanilla.dialogs import message, BaseMessageDialog
 
 from mojo.tools import registerFileExtension
+
 from mojo.events import addObserver
 from mojo.extensions import setExtensionDefault, getExtensionDefault
 
@@ -57,10 +58,12 @@ class MechanicObservers(object):
 
     def applicationDidFinishLaunching(self, notification):
         shouldCheckForUpdates = getExtensionDefault("com.mechanic.checkForUpdate")
+        if not shouldCheckForUpdates:
+            return
         lastCheck = getExtensionDefault("com.mechanic.lastUpdateCheck")
         oneDay = 60 * 60 * 24
         now = time.time()
-        if shouldCheckForUpdates and lastCheck + oneDay < now:
+        if lastCheck + oneDay < now:
             messageText = "Mechanic would like to check for updates."
             informativeText = "This will take some time. Opening Mechanic will also perform a check for updates."
 
