@@ -242,9 +242,7 @@ class MechanicController(BaseWindowController):
         items = [item for item in items if not item.isExtensionFromStore() and not item.isExtensionInstalled()]
         if not items:
             return
-        for item in items:
-            item.remoteInstall(multiSelection)
-        self.w.extensionList.getNSTableView().reloadData()
+        self._extensionAction(items, "Installing extensions...", "remoteInstall", showMessages=multiSelection)
         if multiSelection:
             message = ", ".join([item.extensionName() for item in items])
             self.showMessage("Installing multiple extensions:", message)
@@ -254,21 +252,29 @@ class MechanicController(BaseWindowController):
         items = [item for item in items if item.isExtensionInstalled()]
         if not items:
             return
-        for item in items:
-            item.extensionUninstall()
-        self.w.extensionList.getNSTableView().reloadData()
+        self._extensionAction(items, "Uninstalling extensions...", "extensionUninstall")
 
     def updateCallback(self, sender):
         items = self.getSelection()
+        multiSelection = len(items) > 1
         items = [item for item in items if item.isExtensionInstalled() and item.extensionNeedsUpdate()]
         if not items:
             return
-        for item in items:
-            item.remoteInstall(multiSelection)
-        self.w.extensionList.getNSTableView().reloadData()
+        self._extensionAction(items, "Updating extensions...", "remoteInstall", showMessages=multiSelection)
         if multiSelection:
             message = ", ".join([item.extensionName() for item in items])
             self.showMessage("Updating multiple extensions:", message)
+
+    def _extensionAction(self, items, action, message, **kwargs):
+        multiSelection = len(items) > 1
+        progress = self.startProgress(message)
+        if multiSelection:
+            progress.setTickCount(len(items))
+        for item in items:
+            getattr(item, action)(**kwargs)
+            progress.update()
+        progess.close()
+        self.w.extensionList.getNSTableView().reloadData()
 
     def settingsCallback(self, sender):
         self.loadExtensions()
