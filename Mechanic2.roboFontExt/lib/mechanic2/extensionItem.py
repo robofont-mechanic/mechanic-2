@@ -459,11 +459,11 @@ class ExtensionStoreItem(BaseExtensionItem):
         extensionStoreKey = bundle.getInfo("com.roboFont.extenionsStore")
         return extensionStoreKey
 
-    def remotePurchageURL(self):
+    def remotePurchaseURL(self):
         return self._data["purchaseURL"]
 
-    def openRemotePurchageURL(self, background=False):
-        url = self.remotePurchageURL()
+    def openRemotePurchaseURL(self, background=False):
+        url = self.remotePurchaseURL()
         self.openUrl(url, background=background)
 
 
