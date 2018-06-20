@@ -43,15 +43,15 @@ class MechanicObservers(object):
                 if item not in singleItems:
                     singleItems.append(item)
                     setExtensionDefault("com.mechanic.singleExtensionItems", singleItems)
-                    title = "Opening mechanic file."
-                    text = "Added '%s' to mechanic" % path
+                    title = "Opening Mechanic file."
+                    text = "Added '%s' to Mechanic" % path
                 else:
-                    title = "Duplicated mechanic file."
-                    text = "The extension '%s' is not to mechanic" % path
+                    title = "Duplicate Mechanic file."
+                    text = "The extension '%s' was not added to Mechanic" % path
             except Exception as e:
-                logger.error("Cannot parse '%s' file" % path)
+                logger.error("Cannot parse the file '%s'" % path)
                 logger.error(e)
-                title = "Reading '%s' failed." % path
+                title = "Failed to read the file '%s'." % path
                 text = "See the output window for a detailed traceback."
             message(title, text)
             fileHandler["opened"] = True
@@ -65,7 +65,7 @@ class MechanicObservers(object):
         now = time.time()
         if lastCheck + oneDay < now:
             messageText = "Mechanic would like to check for updates."
-            informativeText = "This will take some time. Opening Mechanic will also perform a check for updates."
+            informativeText = "Updating might take some time, you can check for updates later by opening the Mechanic extension."
 
             alert = BaseMessageDialog.alloc().initWithMessageText_informativeText_alertStyle_buttonTitlesValues_window_resultCallback_(
                 messageText=messageText,
