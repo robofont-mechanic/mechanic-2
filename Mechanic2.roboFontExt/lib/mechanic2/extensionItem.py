@@ -149,7 +149,7 @@ class BaseExtensionItem(object):
 
     # download and install
 
-    def remoteInstall(self, forcedUpdate=False, showDialogs=True):
+    def remoteInstall(self, forcedUpdate=False, showMessages=True):
         """
         Install the extension from the remote. This will call `extensionNeedsUpdate()`
 
@@ -187,7 +187,7 @@ class BaseExtensionItem(object):
         if extensionPath:
             # if found get the bundle and install it
             bundle = ExtensionBundle(path=extensionPath)
-            bundle.install(showMessages=showDialogs)
+            bundle.install(showMessages=showMessages)
             self.resetRemembered()
         else:
             # raise an custom error when the extension is not found in the zip

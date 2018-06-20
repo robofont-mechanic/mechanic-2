@@ -242,7 +242,7 @@ class MechanicController(BaseWindowController):
         items = [item for item in items if not item.isExtensionFromStore() and not item.isExtensionInstalled()]
         if not items:
             return
-        self._extensionAction(items, "Installing extensions...", "remoteInstall", showMessages=multiSelection)
+        self._extensionAction(items=items, message="Installing extensions...", action="remoteInstall", showMessages=not multiSelection)
         if multiSelection:
             message = ", ".join([item.extensionName() for item in items])
             self.showMessage("Installing multiple extensions:", message)
@@ -252,7 +252,7 @@ class MechanicController(BaseWindowController):
         items = [item for item in items if item.isExtensionInstalled()]
         if not items:
             return
-        self._extensionAction(items, "Uninstalling extensions...", "extensionUninstall")
+        self._extensionAction(items=items, message="Uninstalling extensions...", action="extensionUninstall")
 
     def updateCallback(self, sender):
         items = self.getSelection()
@@ -260,20 +260,21 @@ class MechanicController(BaseWindowController):
         items = [item for item in items if item.isExtensionInstalled() and item.extensionNeedsUpdate()]
         if not items:
             return
-        self._extensionAction(items, "Updating extensions...", "remoteInstall", showMessages=multiSelection)
+        self._extensionAction(items=items, message="Updating extensions...", action="remoteInstall", showMessages=not multiSelection)
         if multiSelection:
             message = ", ".join([item.extensionName() for item in items])
             self.showMessage("Updating multiple extensions:", message)
 
-    def _extensionAction(self, items, action, message, **kwargs):
+    def _extensionAction(self, items, message, action, **kwargs):
         multiSelection = len(items) > 1
         progress = self.startProgress(message)
         if multiSelection:
             progress.setTickCount(len(items))
         for item in items:
-            getattr(item, action)(**kwargs)
+            callback = getattr(item, action)
+            callback(**kwargs)
             progress.update()
-        progess.close()
+        progress.close()
         self.w.extensionList.getNSTableView().reloadData()
 
     def settingsCallback(self, sender):
