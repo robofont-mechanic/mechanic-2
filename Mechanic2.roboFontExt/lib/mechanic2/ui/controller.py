@@ -276,6 +276,7 @@ class MechanicController(BaseWindowController):
             progress.update()
         progress.close()
         self.w.extensionList.getNSTableView().reloadData()
+        self.extensionListSelectionCallback(self.w.extensionList)
 
     def settingsCallback(self, sender):
         self.loadExtensions()
