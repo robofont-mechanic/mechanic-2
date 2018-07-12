@@ -62,6 +62,9 @@ class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
                 update = AppKit.NSAttributedString.alloc().initWithString_attributes_(u'Found update %s \u2192 %s\u2003' % (obj.extensionVersion(), obj.remoteVersion()), attrs)
                 string.appendAttributedString_(update)
                 attrs[AppKit.NSForegroundColorAttributeName] = grayColor
+            elif obj.isExtensionInstalled():
+                version = AppKit.NSAttributedString.alloc().initWithString_attributes_(u'%s\u2003' % obj.extensionVersion(), attrs)
+                string.appendAttributedString_(version)
 
             description = AppKit.NSAttributedString.alloc().initWithString_attributes_(obj.extensionDescription() or u'\u2014', attrs)
             string.appendAttributedString_(description)
