@@ -155,7 +155,7 @@ class MechanicController(BaseWindowController):
             progress.setTickCount(None)
             now = time.time()
             setExtensionDefault("com.mechanic.lastUpdateCheck", now)
-            title = time.strftime("Checked at %H:%M", time.gmtime(now))
+            title = time.strftime("Checked at %H:%M", time.localtime(now))
             self.w.checkForUpdates.setTitle(title)
             self._didCheckedForUpdates = True
         progress.close()
