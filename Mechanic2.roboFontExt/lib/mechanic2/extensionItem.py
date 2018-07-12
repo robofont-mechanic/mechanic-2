@@ -129,6 +129,11 @@ class BaseExtensionItem(object):
             return LooseVersion(bundle.version)
         return None
 
+    def forceCheckExtensionNeedsUpdate(self):
+        self._shouldCheckForUpdates = True
+        self.resetRemembered()
+        return self.extensionNeedsUpdate()
+
     @remember
     def extensionNeedsUpdate(self):
         """

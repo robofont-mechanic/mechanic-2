@@ -222,7 +222,20 @@ class MechanicController(BaseWindowController):
 
         def _checkForUpdatesCallback(value):
             if value:
-                self.loadExtensions(True)
+                if NSEvent.modifierFlags() & NSAlternateKeyMask:
+                    # only check the selected items
+                    items = self.getSelection()
+                    progress = self.startProgress("Updating %s extensions..." % len(items))
+                    progress.setTickCount(len(items))
+                    for item in items:
+                        progress.update()
+                        item.forceCheckExtensionNeedsUpdate()
+                    progress.setTickCount(None)
+                    progress.close()
+                    self.w.extensionList.getNSTableView().reloadData()
+                else:
+                    # load all extension and check for updates
+                    self.loadExtensions(True)
 
         if self._didCheckedForUpdates:
             self.showAskYesNo("Check for updates, again?", "All extensions have been checked not so long ago.", callback=_checkForUpdatesCallback)
