@@ -124,7 +124,7 @@ class BaseExtensionItem(object):
     @remember
     def extensionVersion(self):
         bundle = self.extensionBundle()
-        # compare the bundle with the version from the repository
+        # check if the bundle exists
         if bundle.bundleExists():
             return LooseVersion(bundle.version)
         return None
