@@ -233,6 +233,7 @@ class MechanicController(BaseWindowController):
                     progress.setTickCount(None)
                     progress.close()
                     self.w.extensionList.getNSTableView().reloadData()
+                    self.extensionListSelectionCallback(self.w.extensionList)
                 else:
                     # load all extension and check for updates
                     self.loadExtensions(True)
