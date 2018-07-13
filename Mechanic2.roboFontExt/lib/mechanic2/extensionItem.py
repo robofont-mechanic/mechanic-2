@@ -8,7 +8,7 @@ from io import BytesIO
 from urllib.parse import urlparse
 import logging
 
-from ufoLib.plistlib import readPlistFromString
+import plistlib
 
 from mojo.extensions import ExtensionBundle
 
@@ -375,7 +375,7 @@ class ExtensionRepository(BaseExtensionItem):
         try:
             # try to parse the info.plist from string
             # and fail silently with a custom message
-            info = readPlistFromString(infoContents)
+            info = plistlib.loads(infoContents)
         except Exception as e:
             # can not parse the plist
             logger.error("Cannot parse '%s' for '%s'" % (path, self.extensionName()))
