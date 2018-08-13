@@ -9,7 +9,7 @@ from defconAppKit.windows.baseWindow import BaseWindowController
 from mojo.extensions import getExtensionDefault, setExtensionDefault, registerExtensionDefaults, removeExtensionDefault
 
 from mechanic2.extensionItem import ExtensionYamlItem
-from mechanic2.mechacnicTools import getDataFromURL
+from mechanic2.mechanicTools import getDataFromURL
 
 
 logger = logging.getLogger("Mechanic")

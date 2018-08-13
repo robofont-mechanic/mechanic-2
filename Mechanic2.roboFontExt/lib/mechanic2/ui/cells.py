@@ -1,6 +1,6 @@
 import AppKit
 
-from mechanic2.mechacnicTools import remember
+from mechanic2.mechanicTools import remember
 
 
 class MCExtensionCirleCell(AppKit.NSActionCell):

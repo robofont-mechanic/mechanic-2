@@ -12,7 +12,7 @@ from mechanic2.ui.cells import MCExtensionCirleCell, MCImageTextFieldCell
 from mechanic2.ui.formatters import MCExtensionDescriptionFormatter
 from mechanic2.ui.settings import Settings, extensionStoreDataURL
 from mechanic2.extensionItem import ExtensionRepository, ExtensionStoreItem, ExtensionYamlItem
-from mechanic2.mechacnicTools import getDataFromURL
+from mechanic2.mechanicTools import getDataFromURL
 
 
 logger = logging.getLogger("Mechanic")

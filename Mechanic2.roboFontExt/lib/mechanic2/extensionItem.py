@@ -12,7 +12,7 @@ import plistlib
 
 from mojo.extensions import ExtensionBundle
 
-from .mechacnicTools import remember, clearRemembered, findExtensionInRoot, getDataFromURL, ExtensionRepoError
+from .mechanicTools import remember, clearRemembered, findExtensionInRoot, getDataFromURL, ExtensionRepoError
 
 
 logger = logging.getLogger("Mechanic")
