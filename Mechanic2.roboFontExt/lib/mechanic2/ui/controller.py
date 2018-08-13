@@ -284,13 +284,20 @@ class MechanicController(BaseWindowController):
         progress = self.startProgress(message)
         if multiSelection:
             progress.setTickCount(len(items))
+        foundErrors = False
         for item in items:
             callback = getattr(item, action)
-            callback(**kwargs)
+            try:
+                callback(**kwargs)
+            except Exception as e:
+                print("Could not execute: '%s'. \n\n%s" % (action, e))
+                foundErrors = True
             progress.update()
         progress.close()
         self.w.extensionList.getNSTableView().reloadData()
         self.extensionListSelectionCallback(self.w.extensionList)
+        if foundErrors:
+            self.showMessage("%s failed, see output window for details." % message)
 
     def settingsCallback(self, sender):
         self.loadExtensions()
