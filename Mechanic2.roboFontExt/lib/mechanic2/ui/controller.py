@@ -297,7 +297,7 @@ class MechanicController(BaseWindowController):
         self.w.extensionList.getNSTableView().reloadData()
         self.extensionListSelectionCallback(self.w.extensionList)
         if foundErrors:
-            self.showMessage("%s failed, see output window for details." % message)
+            self.showMessage(message, "Failed, see output window for details.")
 
     def settingsCallback(self, sender):
         self.loadExtensions()
