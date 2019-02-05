@@ -266,7 +266,15 @@ class MechanicController(BaseWindowController):
         items = [item for item in items if item.isExtensionInstalled()]
         if not items:
             return
-        self._extensionAction(items=items, message="Uninstalling extensions...", action="extensionUninstall")
+        hasStoreItems = any([item.isExtensionFromStore() for item in items])
+        if hasStoreItems:
+            def callback(response):
+                if response:
+                    self._extensionAction(items=items, message="Uninstalling extensions...", action="extensionUninstall")
+            purchasedItems = [item.extensionName() for item in items if item.isExtensionFromStore()]
+            self.showAskYesNo("Uninstalling a purchased extension.", "Do you want to uninstall a purchased extensions: %s." % (", ".join(purchasedItems)), callback=callback)
+        else:
+            self._extensionAction(items=items, message="Uninstalling extensions...", action="extensionUninstall")
 
     def updateCallback(self, sender):
         items = self.getSelection()
