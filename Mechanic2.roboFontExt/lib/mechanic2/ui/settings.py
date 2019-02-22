@@ -206,18 +206,36 @@ class Settings(BaseWindowController):
         self._shouldCallCallback = True
 
     def addSingleExtension(self):
+        def _increaseVersion(sourceName, checkList, count=None):
+            if count is None:
+                count = 0
+            if count == 0:
+                newName = sourceName
+            else:
+                newName = "%s (%s)" % (sourceName, count)
+            if newName in checkList:
+                return _increaseVersion(sourceName, checkList, count + 1)
+            return newName
+
         def _addSingleExtension(paths):
+            existingItems = list(self.w.singleExtenions)
+            existingItemsTitle = [item["extensionName"] for item in existingItems]
             items = []
             for path in paths:
+                item = None
                 try:
                     with open(path, "rb") as f:
                         item = yaml.load(f.read())
-                        ExtensionYamlItem(item)
-                        items.append(item)
                 except Exception as e:
                     logger.error("Can read single extension item '%s'" % path)
                     logger.error(e)
-
+                if item is not None:
+                    if item not in existingItems:
+                        item["extensionName"] = _increaseVersion(item["extensionName"], existingItemsTitle)
+                        ExtensionYamlItem(item)
+                        items.append(item)
+                    else:
+                        self.showMessage("Single extension already active", "Please remove '%s', to be able to re-activate the exension item." % item["extensionName"])
             self.w.singleExtenions.extend(items)
         self.showGetFile(["mechanic"], callback=_addSingleExtension, allowsMultipleSelection=True)
 
