@@ -171,7 +171,7 @@ class BaseExtensionItem(object):
             # and fail silently with a custom error message
             contents = getDataFromURL(zipPath)
         except Exception as e:
-            message = "Could not download the extension zip file for: '%s'" % self.extensionName
+            message = "Could not download the extension zip file for: '%s'" % self.extensionName()
             logger.error(message)
             logger.error(e)
             raise ExtensionRepoError(message)
@@ -183,7 +183,7 @@ class BaseExtensionItem(object):
             with zipfile.ZipFile(BytesIO(contents)) as z:
                 z.extractall(tempFolder)
         except Exception as e:
-            message = "Could not extract the extension zip file for: '%s'" % self.extensionName
+            message = "Could not extract the extension zip file for: '%s'" % self.extensionName()
             logger.error(message)
             logger.error(e)
             raise ExtensionRepoError(message)
