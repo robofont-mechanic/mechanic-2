@@ -461,7 +461,10 @@ class ExtensionStoreItem(BaseExtensionItem):
     @remember
     def extensionStoreKey(self):
         bundle = self.extensionBundle()
-        extensionStoreKey = bundle.getInfo("com.roboFont.extenionsStore")
+        extensionStoreKey = bundle.getInfo("com.roboFont.extensionStore")
+        if extensionStoreKey is None:
+            # this was a typo but some extension will have this...
+            extensionStoreKey = bundle.getInfo("com.roboFont.extenionsStore")
         return extensionStoreKey
 
     def remotePurchaseURL(self):
