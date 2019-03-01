@@ -252,14 +252,10 @@ class MechanicController(BaseWindowController):
 
     def installCallback(self, sender):
         items = self.getSelection()
-        multiSelection = len(items) > 1
         items = [item for item in items if not item.isExtensionFromStore() and not item.isExtensionInstalled()]
         if not items:
             return
-        self._extensionAction(items=items, message="Installing extensions...", action="remoteInstall", showMessages=not multiSelection)
-        if multiSelection:
-            message = ", ".join([item.extensionName() for item in items])
-            self.showMessage("Installing multiple extensions:", message)
+        self._extensionAction(items=items, message="Installing extensions...", action="remoteInstall")
 
     def uninstallCallback(self, sender):
         items = self.getSelection()
@@ -278,14 +274,10 @@ class MechanicController(BaseWindowController):
 
     def updateCallback(self, sender):
         items = self.getSelection()
-        multiSelection = len(items) > 1
         items = [item for item in items if item.isExtensionInstalled() and item.extensionNeedsUpdate()]
         if not items:
             return
-        self._extensionAction(items=items, message="Updating extensions...", action="remoteInstall", showMessages=not multiSelection)
-        if multiSelection:
-            message = ", ".join([item.extensionName() for item in items])
-            self.showMessage("Updating multiple extensions:", message)
+        self._extensionAction(items=items, message="Updating extensions...", action="remoteInstall")
 
     def _extensionAction(self, items, message, action, **kwargs):
         multiSelection = len(items) > 1

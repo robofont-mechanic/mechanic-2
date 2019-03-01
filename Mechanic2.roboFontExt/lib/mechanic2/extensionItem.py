@@ -154,7 +154,7 @@ class BaseExtensionItem(object):
 
     # download and install
 
-    def remoteInstall(self, forcedUpdate=False, showMessages=True):
+    def remoteInstall(self, forcedUpdate=False, showMessages=False):
         """
         Install the extension from the remote. This will call `extensionNeedsUpdate()`
 
