@@ -1,18 +1,26 @@
-from AppKit import *
 import json
 import logging
 import time
-
 import vanilla
-from defconAppKit.windows.baseWindow import BaseWindowController
 
+from urllib.parse import urlparse
+
+from Foundation import NSObject, NSString, NSUTF8StringEncoding
+from AppKit import NSToolbarFlexibleSpaceItemIdentifier, NSPredicate
+from AppKit import NSEvent, NSAlternateKeyMask
+
+from mojo.events import addObserver
 from mojo.extensions import getExtensionDefault, setExtensionDefault
+
+from defconAppKit.windows.baseWindow import BaseWindowController
 
 from mechanic2.ui.cells import MCExtensionCirleCell, MCImageTextFieldCell
 from mechanic2.ui.formatters import MCExtensionDescriptionFormatter
 from mechanic2.ui.settings import Settings, extensionStoreDataURL
-from mechanic2.extensionItem import ExtensionRepository, ExtensionStoreItem, ExtensionYamlItem
-from mechanic2.mechanicTools import getDataFromURL
+from mechanic2.extensionItem import ExtensionRepository, ExtensionStoreItem
+from mechanic2.extensionItem import ExtensionYamlItem, EXTENSION_ICON_DID_LOAD_EVENT_KEY
+
+from urlreader import URLReader
 
 
 logger = logging.getLogger("Mechanic")
@@ -39,16 +47,6 @@ class MCExtensionListItem(NSObject):
 
     def extensionSearchString(self):
         return self._extensionObject.extensionSearchString()
-
-
-def getExtensionData(url):
-    try:
-        extensionData = getDataFromURL(url, formatter=json.loads)
-    except Exception as e:
-        logger.error("Cannot read url '%s'" % url)
-        logger.error(e)
-        extensionData = dict()
-    return extensionData.get("extensions", [])
 
 
 class MechanicController(BaseWindowController):
@@ -111,54 +109,174 @@ class MechanicController(BaseWindowController):
         self.w.extensionList.setSelection([])
         self.w.open()
 
-        self._didCheckedForUpdates = False
+        self._checkForUpdates = checkForUpdates
+        self._didCheckForUpdates = False
+        self._progress = None
+        self._extensionRepositoriesLoaded = False
+        self._extensionStoreItemsLoaded = False
+        self._canLoadSingleExtensions = True
+        self._wrappedItems = []
+        self._iconURLs = set()
+        self._iconURLsForVisibleRows = set()
+
+        addObserver(self, 'iconDidLoad', EXTENSION_ICON_DID_LOAD_EVENT_KEY)
+
         if shouldLoad:
-            self.loadExtensions(checkForUpdates)
+            self.loadExtensions()
 
-    def loadExtensions(self, checkForUpdates=False):
-        progress = self.startProgress("Loading extensions...")
+    def _makeExtensionItem(self, extensionData, itemClass, url):
+        try:
+            item = MCExtensionListItem(
+                itemClass(extensionData, checkForUpdates=self._checkForUpdates)
+            )
+            self._wrappedItems.append(item)
+        except Exception as e:
+            logger.error("Creating extension item '%s' from url '%s' failed." % (extensionData.get("extensionName", "unknown"), url))
+            logger.error(e)
 
-        wrappedItems = []
-        for urlStream in getExtensionDefault("com.mechanic.urlstreams"):
-            clss = ExtensionRepository
-            if urlStream == extensionStoreDataURL:
-                clss = ExtensionStoreItem
-            for data in getExtensionData(urlStream):
-                try:
-                    item = MCExtensionListItem(clss(data, checkForUpdates=checkForUpdates))
-                    wrappedItems.append(item)
-                except Exception as e:
-                    logger.error("Creating extension item '%s' from url '%s' failed." % (data.get("extensionName", "unknow"), urlStream))
-                    logger.error(e)
+    def _decodeData(self, url, data, error):
+        if error:
+            logger.error("Cannot read url '%s'" % url)
+            logger.error("Error '%s'" % error)
 
+        data = NSString.alloc().initWithData_encoding_(data, NSUTF8StringEncoding)
+        try:
+            extensionData = json.loads(data.strip())
+            return extensionData.get('extensions', [])
+        except json.JSONDecodeError as e:
+            logger.error("Cannot decode extension data at '%s'" % url)
+            logger.error("Error '%s'" % e)
+
+    def _makeExtensionStoreItems(self, url, data, error):
+        _data = self._decodeData(url, data, error)
+        if _data is not None:
+            for extensionData in _data:
+                self._makeExtensionItem(extensionData, ExtensionStoreItem, url)
+        self._extensionStoreItemsLoaded = True
+        self._checkExtensionsDidLoad()
+
+    def _makeExtensionRepositories(self, url, data, error):
+        _data = self._decodeData(url, data, error)
+        if _data is not None:
+            for extensionData in _data:
+                self._makeExtensionItem(extensionData, ExtensionRepository, url)
+        self._extensionRepositoriesLoaded = True
+        self._checkExtensionsDidLoad()
+
+    def _checkExtensionsDidLoad(self):
+        if self._extensionRepositoriesLoaded and self._extensionStoreItemsLoaded:
+            if self._canLoadSingleExtensions:
+                self._canLoadSingleExtensions = False
+                self._loadSingleExtensions()
+
+    def _loadSingleExtensions(self):
         for singleExtension in getExtensionDefault("com.mechanic.singleExtensionItems"):
             try:
-                item = MCExtensionListItem(ExtensionYamlItem(singleExtension, checkForUpdates=checkForUpdates))
-                wrappedItems.append(item)
+                item = MCExtensionListItem(
+                    ExtensionYamlItem(singleExtension, checkForUpdates=self._checkForUpdates)
+                )
+                self._wrappedItems.append(item)
             except Exception as e:
                 logger.error("Creating single extension item '%s' failed." % singleExtension.get("extensionName", "unknow"))
                 logger.error(e)
 
-        progress.update("Setting Extensions...")
+        self._progress.update("Setting Extensions...")
+
+        # sort items by repo, YAML and leave store for last as before...
+        _wrappedItemsOrder = [
+            ExtensionRepository,
+            ExtensionYamlItem,
+            ExtensionStoreItem,
+        ]
+        self._wrappedItems.sort(key=lambda x: _wrappedItemsOrder.index(type(x.extensionObject())))
+
+        # figure out which extensionItems have objects which need updating
+        extensionsItemsToUpdate = []
+        for item in self._wrappedItems:
+            if item.extensionObject().extensionNeedsUpdate():
+                extensionsItemsToUpdate.append(item)
+
+        if len(extensionsItemsToUpdate) > 0:
+            # bring items that need updating to the top of the list...
+            self._wrappedItems.sort(key=lambda x: x.extensionObject().extensionNeedsUpdate(), reverse=True)
+
+        # actually try to set the list with the current _wrappedItems
         try:
-            self.w.extensionList.set(wrappedItems)
+            self.w.extensionList.set(self._wrappedItems)
         except Exception as e:
             logger.error("Cannot set items in mechanic list.")
             logger.error(e)
 
-        if checkForUpdates:
-            progress.update("Checking for updates...")
-            progress.setTickCount(len(wrappedItems))
-            for item in wrappedItems:
-                progress.update()
+        # initialize the list of icon URLs we have to process
+        self._iconURLs = set()
+
+        # prioritize loading and caching the extension icons for the rows which are visible
+        tableView = self.w.extensionList.getNSTableView()
+        rect = tableView.visibleRect()
+        visibleRows = tableView.rowsInRect_(rect)
+        self._iconURLsForVisibleRows = set()
+
+        # start processing the visible rows
+        for row in range(visibleRows.location, visibleRows.location + visibleRows.length):
+            item = self._wrappedItems[row].extensionObject()
+            iconURL = item.extensionIconURL()
+            if iconURL is None: 
+                continue
+
+            item.extensionIcon()
+            self._iconURLs.add(iconURL)
+            self._iconURLsForVisibleRows.add(iconURL)
+
+        # continue by loading all the other extension icons
+        for item in self._wrappedItems:
+            iconURL = item.extensionObject().extensionIconURL()
+
+            # skip the ones we’ve already processed
+            if iconURL is None or iconURL in self._iconURLsForVisibleRows:
+                continue
+
+            item.extensionObject().extensionIcon()
+            self._iconURLs.add(iconURL)
+
+        # after the items are set...
+        if len(extensionsItemsToUpdate) > 0:
+            # ...scroll to the top of the list if there are items which need updating
+            self.w.extensionList.getNSTableView().scrollRowToVisible_(0)
+            # ...and select them for easy, one-click update all by the user
+            extensionItemsToUpdateIndices = [self.w.extensionList.index(x) for x in extensionsItemsToUpdate]
+            self.w.extensionList.setSelection(extensionItemsToUpdateIndices)
+
+        if self._checkForUpdates:
+            self._progress.update("Checking for updates...")
+            self._progress.setTickCount(len(self._wrappedItems))
+            for item in self._wrappedItems:
+                self._progress.update()
                 item.extensionObject().extensionNeedsUpdate()
-            progress.setTickCount(None)
+            self._progress.setTickCount(None)
             now = time.time()
             setExtensionDefault("com.mechanic.lastUpdateCheck", now)
             title = time.strftime("Checked at %H:%M", time.localtime(now))
             self.w.checkForUpdates.setTitle(title)
-            self._didCheckedForUpdates = True
-        progress.close()
+            self._didCheckForUpdates = True
+
+        if self._progress is not None:
+            self._progress.close()
+            self._progress = None
+
+    def loadExtensions(self):
+        self._wrappedItems = []
+        self._canLoadSingleExtensions = True
+        self._progress = self.startProgress("Loading extensions...")
+
+        streams = getExtensionDefault("com.mechanic.urlstreams")
+        for urlStream in streams:
+            urlreader = URLReader(force_https=True)
+            parsedExtensionStoreDataURL = urlparse(extensionStoreDataURL)
+            parsedUrlStream = urlparse(urlStream)
+            if parsedUrlStream.hostname == parsedExtensionStoreDataURL.hostname:
+                urlreader.fetch(urlStream, self._makeExtensionStoreItems)
+            else:
+                urlreader.fetch(urlStream, self._makeExtensionRepositories)
 
     def extensionListSelectionCallback(self, sender):
         items = self.getSelection()
@@ -228,17 +346,18 @@ class MechanicController(BaseWindowController):
                     progress = self.startProgress("Updating %s extensions..." % len(items))
                     progress.setTickCount(len(items))
                     for item in items:
-                        progress.update()
-                        item.forceCheckExtensionNeedsUpdate()
+                        self._progress.update()
+                        item.checkForUpdates()
                     progress.setTickCount(None)
                     progress.close()
-                    self.w.extensionList.getNSTableView().reloadData()
+                    self.reloadData()
                     self.extensionListSelectionCallback(self.w.extensionList)
                 else:
                     # load all extension and check for updates
-                    self.loadExtensions(True)
+                    self._checkForUpdates = True
+                    self.loadExtensions()
 
-        if self._didCheckedForUpdates:
+        if self._didCheckForUpdates:
             self.showAskYesNo("Check for updates, again?", "All extensions have been checked not so long ago.", callback=_checkForUpdatesCallback)
         else:
             _checkForUpdatesCallback(True)
@@ -279,6 +398,27 @@ class MechanicController(BaseWindowController):
             return
         self._extensionAction(items=items, message="Updating extensions...", action="remoteInstall")
 
+    def reloadData(self):
+        # reload the underlying NSTableView data, which also triggers a repaint
+        self.w.extensionList.getNSTableView().reloadData()
+
+    def iconDidLoad(self, info):
+        iconURL = info.get('iconURL', None)
+        if iconURL:
+
+            if iconURL in self._iconURLs:
+                self._iconURLs.remove(iconURL)
+
+            # call reloadData() for every icon that shows loads in the visible area
+            # this avoids the situation where most icons have loaded but we’re waiting
+            # for one way down the tableview, when the user is still at the top of the list
+            if iconURL in self._iconURLsForVisibleRows:
+                self.reloadData()
+
+        # call setNeedsDisplay_(True) on the tableView once, when all the icons have loaded
+        if len(self._iconURLs) == 0:
+            self.w.extensionList.getNSTableView().setNeedsDisplay_(True)
+
     def _extensionAction(self, items, message, action, **kwargs):
         multiSelection = len(items) > 1
         progress = self.startProgress(message)
@@ -294,7 +434,7 @@ class MechanicController(BaseWindowController):
                 foundErrors = True
             progress.update()
         progress.close()
-        self.w.extensionList.getNSTableView().reloadData()
+        self.reloadData()
         self.extensionListSelectionCallback(self.w.extensionList)
         if foundErrors:
             self.showMessage(message, "Failed, see output window for details.")

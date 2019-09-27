@@ -1,21 +1,8 @@
 import os
-import ssl
-from urllib.request import urlopen
 
 
 class ExtensionRepoError(Exception):
     pass
-
-
-def getDataFromURL(url, formatter=None):
-    url = url.replace(" ", "%20")
-    context = ssl._create_unverified_context()
-    response = urlopen(url, timeout=5, context=context)
-    data = response.read()
-    if formatter:
-        data = formatter(data)
-    response.close()
-    return data
 
 
 def findExtensionInRoot(name, path):
