@@ -14,13 +14,16 @@ from mojo.extensions import getExtensionDefault, setExtensionDefault
 
 from defconAppKit.windows.baseWindow import BaseWindowController
 
+from mechanic2 import DefaultURLReader, URLReaderError
 from mechanic2.ui.cells import MCExtensionCirleCell, MCImageTextFieldCell
 from mechanic2.ui.formatters import MCExtensionDescriptionFormatter
 from mechanic2.ui.settings import Settings, extensionStoreDataURL
-from mechanic2.extensionItem import ExtensionRepository, ExtensionStoreItem
-from mechanic2.extensionItem import ExtensionYamlItem, EXTENSION_ICON_DID_LOAD_EVENT_KEY
-
-from urlreader import URLReader
+from mechanic2.extensionItem import ExtensionRepositoryItem, ExtensionStoreItem
+from mechanic2.extensionItem import ExtensionYamlItem
+from mechanic2.extensionItem import EXTENSION_ICON_DID_LOAD_EVENT_KEY
+from mechanic2.extensionItem import EXTENSION_DID_CHECK_FOR_UPDATES_EVENT_KEY
+from mechanic2.extensionItem import EXTENSION_DID_REMOTE_INSTALL_EVENT_KEY
+from mechanic2.extensionItem import EXTENSION_DID_UNINSTALL_EVENT_KEY
 
 
 logger = logging.getLogger("Mechanic")
@@ -109,17 +112,28 @@ class MechanicController(BaseWindowController):
         self.w.extensionList.setSelection([])
         self.w.open()
 
-        self._checkForUpdates = checkForUpdates
+        # flags
+        self._shouldCheckForUpdates = checkForUpdates
         self._didCheckForUpdates = False
-        self._progress = None
-        self._extensionRepositoriesLoaded = False
+        self._extensionRepositoryItemsLoaded = False
         self._extensionStoreItemsLoaded = False
         self._canLoadSingleExtensions = True
+
+        # progress updaters
+        self._progress = None
+
         self._wrappedItems = []
+        self._extensionsToCheck = []
+        self._numExtensionsChecked = 0
+        self._extensionsToUpdate = []
+        self._numExtensionsUpdated = 0
         self._iconURLs = set()
         self._iconURLsForVisibleRows = set()
 
-        addObserver(self, 'iconDidLoad', EXTENSION_ICON_DID_LOAD_EVENT_KEY)
+        addObserver(self, 'extensionIconDidLoad', EXTENSION_ICON_DID_LOAD_EVENT_KEY)
+        addObserver(self, 'extensionDidCheckForUpdates', EXTENSION_DID_CHECK_FOR_UPDATES_EVENT_KEY)
+        addObserver(self, 'extensionDidRemoteInstall', EXTENSION_DID_REMOTE_INSTALL_EVENT_KEY)
+        addObserver(self, 'extensionDidUninstall', EXTENSION_DID_UNINSTALL_EVENT_KEY)
 
         if shouldLoad:
             self.loadExtensions()
@@ -127,7 +141,7 @@ class MechanicController(BaseWindowController):
     def _makeExtensionItem(self, extensionData, itemClass, url):
         try:
             item = MCExtensionListItem(
-                itemClass(extensionData, checkForUpdates=self._checkForUpdates)
+                itemClass(extensionData, checkForUpdates=self._shouldCheckForUpdates)
             )
             self._wrappedItems.append(item)
         except Exception as e:
@@ -138,10 +152,11 @@ class MechanicController(BaseWindowController):
         if error:
             logger.error("Cannot read url '%s'" % url)
             logger.error("Error '%s'" % error)
+            return
 
         data = NSString.alloc().initWithData_encoding_(data, NSUTF8StringEncoding)
         try:
-            extensionData = json.loads(data.strip())
+            extensionData = json.loads(data)
             return extensionData.get('extensions', [])
         except json.JSONDecodeError as e:
             logger.error("Cannot decode extension data at '%s'" % url)
@@ -159,53 +174,43 @@ class MechanicController(BaseWindowController):
         _data = self._decodeData(url, data, error)
         if _data is not None:
             for extensionData in _data:
-                self._makeExtensionItem(extensionData, ExtensionRepository, url)
-        self._extensionRepositoriesLoaded = True
+                self._makeExtensionItem(extensionData, ExtensionRepositoryItem, url)
+        self._extensionRepositoryItemsLoaded = True
         self._checkExtensionsDidLoad()
 
     def _checkExtensionsDidLoad(self):
-        if self._extensionRepositoriesLoaded and self._extensionStoreItemsLoaded:
+        if self._extensionRepositoryItemsLoaded and self._extensionStoreItemsLoaded:
             if self._canLoadSingleExtensions:
                 self._canLoadSingleExtensions = False
                 self._loadSingleExtensions()
 
     def _loadSingleExtensions(self):
+        # make extension items for single extensions
         for singleExtension in getExtensionDefault("com.mechanic.singleExtensionItems"):
             try:
                 item = MCExtensionListItem(
-                    ExtensionYamlItem(singleExtension, checkForUpdates=self._checkForUpdates)
+                    ExtensionYamlItem(singleExtension, checkForUpdates=self._shouldCheckForUpdates)
                 )
                 self._wrappedItems.append(item)
             except Exception as e:
                 logger.error("Creating single extension item '%s' failed." % singleExtension.get("extensionName", "unknow"))
                 logger.error(e)
 
+        self._finishSettingExtensions()
+
+    def _finishSettingExtensions(self):
         self._progress.update("Setting Extensions...")
 
         # sort items by repo, YAML and leave store for last as before...
         _wrappedItemsOrder = [
-            ExtensionRepository,
+            ExtensionRepositoryItem,
             ExtensionYamlItem,
             ExtensionStoreItem,
         ]
         self._wrappedItems.sort(key=lambda x: _wrappedItemsOrder.index(type(x.extensionObject())))
 
-        # figure out which extensionItems have objects which need updating
-        extensionsItemsToUpdate = []
-        for item in self._wrappedItems:
-            if item.extensionObject().extensionNeedsUpdate():
-                extensionsItemsToUpdate.append(item)
-
-        if len(extensionsItemsToUpdate) > 0:
-            # bring items that need updating to the top of the list...
-            self._wrappedItems.sort(key=lambda x: x.extensionObject().extensionNeedsUpdate(), reverse=True)
-
         # actually try to set the list with the current _wrappedItems
-        try:
-            self.w.extensionList.set(self._wrappedItems)
-        except Exception as e:
-            logger.error("Cannot set items in mechanic list.")
-            logger.error(e)
+        self.setItems(self._wrappedItems)
 
         # initialize the list of icon URLs we have to process
         self._iconURLs = set()
@@ -238,30 +243,12 @@ class MechanicController(BaseWindowController):
             item.extensionObject().extensionIcon()
             self._iconURLs.add(iconURL)
 
-        # after the items are set...
-        if len(extensionsItemsToUpdate) > 0:
-            # ...scroll to the top of the list if there are items which need updating
-            self.w.extensionList.getNSTableView().scrollRowToVisible_(0)
-            # ...and select them for easy, one-click update all by the user
-            extensionItemsToUpdateIndices = [self.w.extensionList.index(x) for x in extensionsItemsToUpdate]
-            self.w.extensionList.setSelection(extensionItemsToUpdateIndices)
-
-        if self._checkForUpdates:
-            self._progress.update("Checking for updates...")
-            self._progress.setTickCount(len(self._wrappedItems))
-            for item in self._wrappedItems:
-                self._progress.update()
-                item.extensionObject().extensionNeedsUpdate()
-            self._progress.setTickCount(None)
-            now = time.time()
-            setExtensionDefault("com.mechanic.lastUpdateCheck", now)
-            title = time.strftime("Checked at %H:%M", time.localtime(now))
-            self.w.checkForUpdates.setTitle(title)
-            self._didCheckForUpdates = True
-
         if self._progress is not None:
             self._progress.close()
             self._progress = None
+
+        if self._shouldCheckForUpdates:
+            self.checkForUpdates()
 
     def loadExtensions(self):
         self._wrappedItems = []
@@ -270,13 +257,101 @@ class MechanicController(BaseWindowController):
 
         streams = getExtensionDefault("com.mechanic.urlstreams")
         for urlStream in streams:
-            urlreader = URLReader(force_https=True)
             parsedExtensionStoreDataURL = urlparse(extensionStoreDataURL)
             parsedUrlStream = urlparse(urlStream)
             if parsedUrlStream.hostname == parsedExtensionStoreDataURL.hostname:
-                urlreader.fetch(urlStream, self._makeExtensionStoreItems)
+                DefaultURLReader.fetch(urlStream, self._makeExtensionStoreItems)
             else:
-                urlreader.fetch(urlStream, self._makeExtensionRepositories)
+                DefaultURLReader.fetch(urlStream, self._makeExtensionRepositories)
+
+    def extensionDidRemoteInstall(self, info):
+        self._numExtensionsUpdated += 1
+        if self._numExtensionsUpdated < len(self._extensionsToUpdate):
+            if self._progress is not None:
+                self._progress.update()
+            return
+
+        if self._progress is not None:
+            self._progress.close()
+            self._progress = None
+
+        self.extensionListSelectionCallback(None)
+        self.reloadData()
+
+    def extensionDidUninstall(self, info):
+        self.extensionListSelectionCallback(None)
+        self.reloadData()
+
+    def extensionDidCheckForUpdates(self, info):
+        self._numExtensionsChecked += 1
+        if self._progress is not None:
+            self._progress.update()
+
+        if self._numExtensionsChecked < len(self._extensionsToCheck):
+            # drop out early if we’re still in the middle of checking 
+            # for extension updates
+            return
+
+        # By this point, all selected extensions have finished checking.
+        # The self._didCheckForUpdates flag just ensures this block doesn’t 
+        # get executed multiple times
+        if not self._didCheckForUpdates:
+
+            now = time.time()
+            setExtensionDefault("com.mechanic.lastUpdateCheck", now)
+            title = time.strftime("Checked at %H:%M", time.localtime(now))
+            self.w.checkForUpdates.setTitle(title)
+
+            if self._progress is not None:
+                self._progress.close()
+                self._progress = None
+
+            # figure out which extension items need updating
+            extensionsItemsToUpdate = [x for x in self._wrappedItems if x.extensionObject().extensionNeedsUpdate()]
+            if len(extensionsItemsToUpdate) > 0:
+                # bring items that need updating to the top of the list
+                self._wrappedItems.sort(key=lambda x: x.extensionObject().extensionNeedsUpdate(), reverse=True)
+
+            # set the table view with the current _wrappedItems
+            self.setItems(self._wrappedItems)
+
+            # after the updated items are set...
+            if len(extensionsItemsToUpdate) > 0:
+                # ...scroll to the top of the list if there are items which need updating
+                self.w.extensionList.getNSTableView().scrollRowToVisible_(0)
+                # ...and select them for easy, one-click update all by the user
+                extensionItemsToUpdateIndices = [self.w.extensionList.index(x) for x in extensionsItemsToUpdate]
+                self.w.extensionList.setSelection(extensionItemsToUpdateIndices)
+
+            self._didCheckForUpdates = True
+
+    def checkForUpdates(self, itemsToCheck=None):
+        # reset the flag so we know we need to complete an update cycle
+        self._didCheckForUpdates = False
+
+        if itemsToCheck is None:
+            self._extensionsToCheck = [x.extensionObject() for x in self._wrappedItems]
+        else:
+            self._extensionsToCheck = itemsToCheck
+
+        numExtensionsToCheck = len(self._extensionsToCheck)
+        self._numExtensionsChecked = 0
+
+        self._progress = self.startProgress("Checking for updates...")
+        self._progress.setTickCount(numExtensionsToCheck)
+
+        for item in self._extensionsToCheck:
+            # these get executed asyncronously and send extensionDidCheckForUpdates
+            # notifications when they’re done
+            item.checkForUpdates()
+
+    def setItems(self, items):
+        # set the list with the current _wrappedItems
+        try:
+            self.w.extensionList.set(items)
+        except Exception as e:
+            logger.error("Cannot set items in mechanic list.")
+            logger.error(e)
 
     def extensionListSelectionCallback(self, sender):
         items = self.getSelection()
@@ -337,25 +412,17 @@ class MechanicController(BaseWindowController):
     # buttons
 
     def checkForUpdatesCallback(self, sender):
-
         def _checkForUpdatesCallback(value):
             if value:
                 if NSEvent.modifierFlags() & NSAlternateKeyMask:
                     # only check the selected items
-                    items = self.getSelection()
-                    progress = self.startProgress("Updating %s extensions..." % len(items))
-                    progress.setTickCount(len(items))
-                    for item in items:
-                        self._progress.update()
-                        item.checkForUpdates()
-                    progress.setTickCount(None)
-                    progress.close()
-                    self.reloadData()
-                    self.extensionListSelectionCallback(self.w.extensionList)
+                    selected = self.getSelection()
+                    self.checkForUpdates(selected)
                 else:
-                    # load all extension and check for updates
-                    self._checkForUpdates = True
-                    self.loadExtensions()
+                    # only check for updates in items that are actually installed
+                    installed = [item.extensionObject() for item in self._wrappedItems if item.extensionObject().isExtensionInstalled()]
+                    self.checkForUpdates(installed)
+                self.extensionListSelectionCallback(self.w.extensionList)
 
         if self._didCheckForUpdates:
             self.showAskYesNo("Check for updates, again?", "All extensions have been checked not so long ago.", callback=_checkForUpdatesCallback)
@@ -372,8 +439,9 @@ class MechanicController(BaseWindowController):
     def installCallback(self, sender):
         items = self.getSelection()
         items = [item for item in items if not item.isExtensionFromStore() and not item.isExtensionInstalled()]
-        if not items:
-            return
+        if not items: return
+        self._extensionsToUpdate = items
+        self._numExtensionsUpdated = 0
         self._extensionAction(items=items, message="Installing extensions...", action="remoteInstall")
 
     def uninstallCallback(self, sender):
@@ -394,23 +462,26 @@ class MechanicController(BaseWindowController):
     def updateCallback(self, sender):
         items = self.getSelection()
         items = [item for item in items if item.isExtensionInstalled() and item.extensionNeedsUpdate()]
-        if not items:
-            return
-        self._extensionAction(items=items, message="Updating extensions...", action="remoteInstall")
+        if not items: return 
+        self._extensionsToUpdate = items
+        self._numExtensionsUpdated = 0
+        self._progress = self.startProgress("Updating extensions...")
+        self._progress.setTickCount(len(items))
+        self._extensionAction(items=items, message=None, action="remoteInstall")
 
     def reloadData(self):
         # reload the underlying NSTableView data, which also triggers a repaint
         self.w.extensionList.getNSTableView().reloadData()
 
-    def iconDidLoad(self, info):
+    def extensionIconDidLoad(self, info):
         iconURL = info.get('iconURL', None)
         if iconURL:
 
             if iconURL in self._iconURLs:
                 self._iconURLs.remove(iconURL)
 
-            # call reloadData() for every icon that shows loads in the visible area
-            # this avoids the situation where most icons have loaded but we’re waiting
+            # Call reloadData() for every icon that shows up in the visible area.
+            # This avoids the situation where most icons have loaded but we’re waiting
             # for one way down the tableview, when the user is still at the top of the list
             if iconURL in self._iconURLsForVisibleRows:
                 self.reloadData()
@@ -421,8 +492,9 @@ class MechanicController(BaseWindowController):
 
     def _extensionAction(self, items, message, action, **kwargs):
         multiSelection = len(items) > 1
-        progress = self.startProgress(message)
-        if multiSelection:
+        if message:
+            progress = self.startProgress(message)
+        if message and multiSelection:
             progress.setTickCount(len(items))
         foundErrors = False
         for item in items:
@@ -430,10 +502,13 @@ class MechanicController(BaseWindowController):
             try:
                 callback(**kwargs)
             except Exception as e:
-                print("Could not execute: '%s'. \n\n%s" % (action, e))
+                logger.error("Could not execute: '%s'. \n\n%s" % (action, e))
                 foundErrors = True
-            progress.update()
-        progress.close()
+            if message:
+                progress.update()
+        if message:
+            progress.close()
+            progress = None
         self.reloadData()
         self.extensionListSelectionCallback(self.w.extensionList)
         if foundErrors:

@@ -10,9 +10,8 @@ from defconAppKit.windows.baseWindow import BaseWindowController
 
 from mojo.extensions import getExtensionDefault, setExtensionDefault, registerExtensionDefaults, removeExtensionDefault
 
+from mechanic2 import DefaultURLReader
 from mechanic2.extensionItem import ExtensionYamlItem
-
-from urlreader import URLReader
 
 
 logger = logging.getLogger("Mechanic")
@@ -81,7 +80,7 @@ class AddURLSheet(BaseWindowController):
 
         data = NSString.alloc().initWithData_encoding_(data, NSUTF8StringEncoding)
         try:
-            _data = json.loads(data.strip())
+            _data = json.loads(data)
             extensionData = _data['extensions']
         except Exception as e:
             self._valid = False
@@ -107,7 +106,7 @@ class AddURLSheet(BaseWindowController):
     def addCallback(self, sender):
         # check the URL before adding
         url = self.w.url.get()
-        urlreader = URLReader(force_https=True)
+        urlreader = DefaultURLReader(force_https=True)
         urlreader.fetch(url, self._checkURLCallback)
         return True
 

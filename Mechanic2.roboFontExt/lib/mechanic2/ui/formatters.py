@@ -28,7 +28,8 @@ class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
             string.appendAttributedString_(name)
 
             if obj.extensionPrice():
-                attrs[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.greenColor()
+                priceColor = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.7, 0, 1)
+                attrs[AppKit.NSForegroundColorAttributeName] = priceColor
                 price = AppKit.NSAttributedString.alloc().initWithString_attributes_('\u2003%s' % obj.extensionPrice(), attrs)
                 string.appendAttributedString_(price)
 
