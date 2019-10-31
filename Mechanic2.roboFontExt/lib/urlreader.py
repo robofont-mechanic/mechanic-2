@@ -1,3 +1,4 @@
+import re
 import objc
 import logging
 
@@ -22,6 +23,9 @@ USER_CACHE_DIRECTORY_URL, _ = NSFileManager.defaultManager().\
     )
 CACHE_DIRECTORY_URL = USER_CACHE_DIRECTORY_URL.\
     URLByAppendingPathComponent_isDirectory_('URLReader', True)
+
+
+quote_r = re.compile('%[A-Za-z0-9]{2}')
 
 
 def callback(url, data, error):
@@ -74,6 +78,8 @@ class URLReader(object):
 
     def quote_url_path(self, url):
         u = urlparse(url)
+        if quote_r.search(u.path): # this path is already quoted
+            return url
         return urlunparse(u._replace(path=quote(u.path)))
 
     def http2https_url(self, url):
