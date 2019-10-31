@@ -106,8 +106,7 @@ class AddURLSheet(BaseWindowController):
     def addCallback(self, sender):
         # check the URL before adding
         url = self.w.url.get()
-        urlreader = DefaultURLReader(force_https=True)
-        urlreader.fetch(url, self._checkURLCallback)
+        DefaultURLReader.fetch(url, self._checkURLCallback)
         return True
 
     def closeCallback(self, sender):
