@@ -1,15 +1,17 @@
-import AppKit
-import vanilla
 import json
 import yaml
 import logging
+import vanilla
+
+import AppKit
+from Foundation import NSString, NSUTF8StringEncoding
 
 from defconAppKit.windows.baseWindow import BaseWindowController
 
 from mojo.extensions import getExtensionDefault, setExtensionDefault, registerExtensionDefaults, removeExtensionDefault
 
+from mechanic2 import DefaultURLReader
 from mechanic2.extensionItem import ExtensionYamlItem
-from mechanic2.mechanicTools import getDataFromURL
 
 
 logger = logging.getLogger("Mechanic")
@@ -18,8 +20,8 @@ logger = logging.getLogger("Mechanic")
 genericListPboardType = "mechanicListPBoardType"
 
 
-extensionStoreDataURL = "http://extensionstore.robofont.com/data.json"
-mechanicDataURL = "https://robofont-mechanic.github.io/mechanic-2-server/api/v2/registry.json"
+extensionStoreDataURL = "https://extensionstore.robofont.com/data.json"
+mechanicDataURL = "https://robofontmechanic.com/api/v2/registry.json"
 
 
 def registerMechanicDefaults(reset=False):
@@ -43,6 +45,8 @@ class AddURLSheet(BaseWindowController):
     def __init__(self, parentWindow, callback, existingURLs):
         self._callback = callback
         self._existingURLs = existingURLs
+        self._valid = False
+        self._validation_report = ""
 
         self.w = vanilla.Sheet((350, 85), parentWindow=parentWindow)
 
@@ -63,28 +67,47 @@ class AddURLSheet(BaseWindowController):
     def get(self):
         return self.w.url.get()
 
-    def validateURL(self):
-        # tiny bit of validation...
-        url = self.w.url.get()
-        try:
-            extensionData = getDataFromURL(url, formatter=json.loads)
-            extensionData["extensions"]
-        except Exception as e:
-            logger.error("Can not validate url '%s'" % url)
-            logger.error(e)
-            return False, "Unable to read the stream."
-        if url in self._existingURLs:
-            return False, "Duplicated stream."
-        return True, ""
-
-    def addCallback(self, sender):
-        valid, report = self.validateURL()
-        if not valid:
-            self.showMessage("Not a valid extension json URL.", "The url '%s' is not a valid. \n\n%s" % (self.w.url.get(), report))
+    def _checkURLCallback(self, url, data, error):
+        self._valid = True
+        self._validation_report = ""
+        
+        if error:
+            self._valid = False
+            self._validation_report = "Cannot load url '%s'" % url
+            logger.error(self._validation_report)
+            self.showMessage("Invalid URL", self._validation_report)
             return
+
+        data = NSString.alloc().initWithData_encoding_(data, NSUTF8StringEncoding)
+        try:
+            _data = json.loads(data)
+            extensionData = _data['extensions']
+        except Exception as e:
+            self._valid = False
+            self._validation_report = "Cannot validate url '%s'" % url
+            logger.error(self._validation_report)
+            logger.error(e)
+            self.showMessage("Invalid URL", self._validation_report)
+            return
+
+        if url in self._existingURLs:
+            self._valid = False
+            self._validation_report = "URL already existing"
+            self.showMessage("Invalid URL", self._validation_report)
+            return
+        
+        if not self._valid:
+            self.showMessage("Not a valid extension json URL.", "The url '%s' is not a valid. \n\n%s" % (self.w.url.get(), self._validation_report))
+
+        # everything’s valid, proceed with the add
         if self._callback:
             self._callback(self)
-        self.closeCallback(sender)
+
+    def addCallback(self, sender):
+        # check the URL before adding
+        url = self.w.url.get()
+        DefaultURLReader.fetch(url, self._checkURLCallback)
+        return True
 
     def closeCallback(self, sender):
         self.w.close()
@@ -227,7 +250,7 @@ class Settings(BaseWindowController):
                     with open(path, "rb") as f:
                         item = yaml.load(f.read())
                 except Exception as e:
-                    logger.error("Can read single extension item '%s'" % path)
+                    logger.error("Cannot read single extension item '%s'" % path)
                     logger.error(e)
                 if item is not None:
                     if item not in existingItems:
@@ -235,7 +258,7 @@ class Settings(BaseWindowController):
                         ExtensionYamlItem(item)
                         items.append(item)
                     else:
-                        self.showMessage("Single extension already active", "Please remove '%s', to be able to re-activate the exension item." % item["extensionName"])
+                        self.showMessage("Single extension already active", "Please remove '%s', to be able to re-activate the extension item." % item["extensionName"])
             self.w.singleExtenions.extend(items)
         self.showGetFile(["mechanic"], callback=_addSingleExtension, allowsMultipleSelection=True)
 
