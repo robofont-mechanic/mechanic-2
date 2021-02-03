@@ -176,7 +176,7 @@ class BaseExtensionItem(object):
 
     def _remoteInstallCallback(self, url, data, error):
         if error:
-            message = "Could not download the extension zip file for: '%s'" % self.extensionName()
+            message = "Could not download the extension zip file for: '%s' at url: '%s'" % (self.extensionName(), url)
             logger.error(message)
             logger.error(error)
             raise ExtensionRepoError(message)
@@ -189,7 +189,7 @@ class BaseExtensionItem(object):
             with zipfile.ZipFile(io.BytesIO(data.bytes())) as z:
                 z.extractall(tempFolder)
         except Exception as e:
-            message = "Could not extract the extension zip file for: '%s'" % self.extensionName()
+            message = "Could not extract the extension zip file for: '%s' at url: '%s'" % (self.extensionName(), url)
             logger.error(message)
             logger.error(e)
             raise ExtensionRepoError(message)
@@ -225,7 +225,7 @@ class BaseExtensionItem(object):
         Optional set `forcedUpdate` to `True` if its needed to install the extension anyhow
         """
         self._showMessages = showMessages
-        
+
         if self.isExtensionInstalled() and not self.extensionNeedsUpdate() and not forcedUpdate:
             # dont download and install if the current intall is newer (only when it forced)
             return
@@ -233,7 +233,7 @@ class BaseExtensionItem(object):
         # get the zip path
         zipPath = self.remoteZipPath()
 
-        # performing the background URL fetching operation 
+        # performing the background URL fetching operation
         DefaultURLReader.fetch(zipPath, self._remoteInstallCallback)
 
     def remoteZipPath(self):
