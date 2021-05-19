@@ -349,7 +349,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
 
     urlFormatters = dict(
         github=dict(
-            zipPath="https://github.com{repositoryPath}/archive/master.zip",
+            zipPath="https://api.github.com/repos{repositoryPath}/zipball",
             infoPlistPath="https://raw.githubusercontent.com{repositoryPath}/master/{extensionPath}/info.plist"
         ),
         gitlab=dict(
