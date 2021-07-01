@@ -9,7 +9,7 @@ from Foundation import NSObject, NSString, NSUTF8StringEncoding
 from AppKit import NSToolbarFlexibleSpaceItemIdentifier, NSPredicate
 from AppKit import NSEvent, NSAlternateKeyMask
 
-from mojo.events import addObserver
+from mojo.events import addObserver, removeObserver
 from mojo.extensions import getExtensionDefault, setExtensionDefault
 
 from defconAppKit.windows.baseWindow import BaseWindowController
@@ -110,6 +110,8 @@ class MechanicController(BaseWindowController):
             button.show(False)
 
         self.w.extensionList.setSelection([])
+
+        self.w.bind("close", self._windowWillCloseCallback)
         self.w.open()
 
         # flags
@@ -137,6 +139,12 @@ class MechanicController(BaseWindowController):
 
         if shouldLoad:
             self.loadExtensions()
+
+    def _windowWillCloseCallback(self, sender):
+        removeObserver(self, EXTENSION_ICON_DID_LOAD_EVENT_KEY)
+        removeObserver(self, EXTENSION_DID_CHECK_FOR_UPDATES_EVENT_KEY)
+        removeObserver(self, EXTENSION_DID_REMOTE_INSTALL_EVENT_KEY)
+        removeObserver(self, EXTENSION_DID_UNINSTALL_EVENT_KEY)
 
     def _makeExtensionItem(self, extensionData, itemClass, url):
         try:
@@ -199,7 +207,8 @@ class MechanicController(BaseWindowController):
         self._finishSettingExtensions()
 
     def _finishSettingExtensions(self):
-        self._progress.update("Setting Extensions...")
+        if self._progress is not None:
+            self._progress.update("Setting Extensions...")
 
         # sort items by repo, YAML and leave store for last as before...
         _wrappedItemsOrder = [
@@ -225,7 +234,7 @@ class MechanicController(BaseWindowController):
         for row in range(visibleRows.location, visibleRows.location + visibleRows.length):
             item = self._wrappedItems[row].extensionObject()
             iconURL = item.extensionIconURL()
-            if iconURL is None: 
+            if iconURL is None:
                 continue
 
             item.extensionIcon()
@@ -248,6 +257,7 @@ class MechanicController(BaseWindowController):
             self._progress = None
 
         if self._shouldCheckForUpdates:
+            self._shouldCheckForUpdates = False
             self.checkForUpdates()
 
     def loadExtensions(self):
@@ -288,12 +298,12 @@ class MechanicController(BaseWindowController):
             self._progress.update()
 
         if self._numExtensionsChecked < len(self._extensionsToCheck):
-            # drop out early if we’re still in the middle of checking 
+            # drop out early if we’re still in the middle of checking
             # for extension updates
             return
 
         # By this point, all selected extensions have finished checking.
-        # The self._didCheckForUpdates flag just ensures this block doesn’t 
+        # The self._didCheckForUpdates flag just ensures this block doesn’t
         # get executed multiple times
         if not self._didCheckForUpdates:
 
@@ -462,7 +472,7 @@ class MechanicController(BaseWindowController):
     def updateCallback(self, sender):
         items = self.getSelection()
         items = [item for item in items if item.isExtensionInstalled() and item.extensionNeedsUpdate()]
-        if not items: return 
+        if not items: return
         self._extensionsToUpdate = items
         self._numExtensionsUpdated = 0
         self._progress = self.startProgress("Updating extensions...")
