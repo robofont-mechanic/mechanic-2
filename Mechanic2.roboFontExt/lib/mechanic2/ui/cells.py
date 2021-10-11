@@ -3,7 +3,7 @@ import AppKit
 from mechanic2.mechanicTools import remember
 
 
-class MCExtensionCirleCell(AppKit.NSActionCell):
+class MCExtensionCirleCell(AppKit.NSTextFieldCell):
 
     def drawWithFrame_inView_(self, frame, view):
         controller = self.objectValue()
