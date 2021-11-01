@@ -172,14 +172,27 @@ class BaseExtensionItem(object):
         """
         return self._needsUpdate
 
+    def installErrors(self):
+        return self._data.get("installErrors", None)
+
     # download and install
 
     def _remoteInstallCallback(self, url, data, error):
+
+        if "installErrors" in self._data:
+            del self._data["installErrors"]
+
+        def reportError(message, error=None):
+            self._data["installErrors"] = message
+            logger.error(message)
+            if error:
+                logger.error(error)
+            postEvent(EXTENSION_DID_REMOTE_INSTALL_EVENT_KEY, item=self)
+            raise ExtensionRepoError(message)
+
         if error:
             message = "Could not download the extension zip file for: '%s' at url: '%s'" % (self.extensionName(), url)
-            logger.error(message)
-            logger.error(error)
-            raise ExtensionRepoError(message)
+            reportError(message, error)
 
         # create a temp folder
         tempFolder = tempfile.mkdtemp()
@@ -190,22 +203,22 @@ class BaseExtensionItem(object):
                 z.extractall(tempFolder)
         except Exception as e:
             message = "Could not extract the extension zip file for: '%s' at url: '%s'" % (self.extensionName(), url)
-            logger.error(message)
-            logger.error(e)
-            raise ExtensionRepoError(message)
+            reportError(message, e)
 
         # find the extension path
         extensionPath = findExtensionInRoot(os.path.basename(self.extensionPath), tempFolder)
         if extensionPath:
             # if found get the bundle and install it
             bundle = ExtensionBundle(path=extensionPath)
-            bundle.install(showMessages=self._showMessages)
+            succes, installMessage = bundle.install(showMessages=self._showMessages)
+            if not succes:
+                # raise an custom error when the extension cannot be installed
+                reportError(installMessage)
             self.resetRemembered()
         else:
             # raise an custom error when the extension is not found in the zip
             message = "Could not find the extension: '%s'" % self.extensionPath
-            logger.error(message)
-            raise ExtensionRepoError(message)
+            reportError(message)
 
         # remove the temp folder with the extracted zip
         shutil.rmtree(tempFolder)
