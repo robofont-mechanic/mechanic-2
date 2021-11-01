@@ -10,7 +10,7 @@ class MCExtensionCirleCell(AppKit.NSTextFieldCell):
         obj = controller.extensionObject()
 
         image = None
-        if obj.installErrors():
+        if obj.hasInstallErrors():
             image = InstallErroIndicator()
         elif obj.isExtensionInstalled():
             if obj.isExtensionFromStore() and obj.extensionStoreKey() is None:
@@ -30,6 +30,7 @@ class MCExtensionCirleCell(AppKit.NSTextFieldCell):
                 AppKit.NSCompositeSourceOver,
                 1.0
             )
+
 
 @remember
 def InstallErroIndicator():

@@ -172,6 +172,9 @@ class BaseExtensionItem(object):
         """
         return self._needsUpdate
 
+    def hasInstallErrors(self):
+        return "installErrors" in self._data
+
     def installErrors(self):
         return self._data.get("installErrors", None)
 
@@ -261,6 +264,10 @@ class BaseExtensionItem(object):
         # subclass must overwrite this method
         raise NotImplementedError
 
+    def releasesURL(self):
+        # subclass must overwrite this method
+        raise NotImplementedError
+
     def checkForUpdates(self):
         # subclass must overwrite this method
         raise NotImplementedError
@@ -323,7 +330,14 @@ class BaseExtensionItem(object):
         )
 
     def openRemoteURL(self, background=False):
-        url = self.remoteURL()
+        if self.hasInstallErrors():
+            url = self.releasesURL()
+            if url is None:
+                # fallback to the remote url
+                url = self.remoteURL()
+        else:
+            url = self.remoteURL()
+
         self.openUrl(url, background=background)
 
 
@@ -349,6 +363,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
         # optionally direct parts to online zip and info.plist
         self._remoteZipPath = self._data.get("zipPath")
         self._remoteInfoPath = self._data.get("infoPath")
+        self._releasesPath = self._data.get("releasesPath")
 
         if "extensionName" not in self._data:
             self._data["extensionName"] = self.extensionPath.split("/")[-1]
@@ -363,15 +378,18 @@ class ExtensionRepositoryItem(BaseExtensionItem):
     urlFormatters = dict(
         github=dict(
             zipPath="https://api.github.com/repos{repositoryPath}/zipball",
-            infoPlistPath="https://raw.githubusercontent.com{repositoryPath}/master/{extensionPath}/info.plist"
+            infoPlistPath="https://raw.githubusercontent.com{repositoryPath}/master/{extensionPath}/info.plist",
+            releasesPath="https://github.com{repositoryPath}/releases"
         ),
         gitlab=dict(
             zipPath="https://gitlab.com{repositoryPath}/-/archive/master/{repositoryName}-master.zip",
-            infoPlistPath="https://gitlab.com{repositoryPath}/raw/master/{extensionPath}/info.plist"
+            infoPlistPath="https://gitlab.com{repositoryPath}/raw/master/{extensionPath}/info.plist",
+            releasesPath="https://gitlab.com{repositoryPath}/-/releases"
         ),
         bitbucket=dict(
             zipPath="https://bitbucket.org{repositoryPath}/get/master.zip",
-            infoPlistPath="https://bitbucket.org{repositoryPath}/src/master/{extensionPath}/info.plist"
+            infoPlistPath="https://bitbucket.org{repositoryPath}/src/master/{extensionPath}/info.plist",
+            releasesPath="https://bitbucket.org{repositoryPath}/downloads/?tab=tags"
         )
     )
 
@@ -443,6 +461,17 @@ class ExtensionRepositoryItem(BaseExtensionItem):
     def remoteURL(self):
         return self.repository
 
+    def releasesURL(self):
+        if self._releasesPath is None:
+            formatter = self.urlFormatters[self.service()].get("releasesPath")
+            # format the info with the given data
+            self._releasesPath = formatter.format(
+                repositoryPath=self.repositoryParsedURL.path,
+                repositoryName=self.extensionName(),
+                extensionPath=self.extensionPath
+            )
+        return self._releasesPath
+
     def remoteVersion(self):
         """
         Return the version of the repository, retrieved from the `info.plist`.
@@ -488,7 +517,8 @@ class ExtensionStoreItem(BaseExtensionItem):
         ("developerURL", str),
         ("description", str),
         ("tags", list),
-        ("date", str)
+        ("date", str),
+        ("releasesURL", str)
     ]
 
     def _init(self):
@@ -497,6 +527,9 @@ class ExtensionStoreItem(BaseExtensionItem):
 
     def remoteURL(self):
         return self._data["link"]
+
+    def releasesURL(self):
+        return self._data.get("releasesURL")
 
     def remoteVersion(self):
         return self._data["version"]

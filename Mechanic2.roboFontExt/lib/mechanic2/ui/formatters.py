@@ -57,7 +57,7 @@ class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
                 update = AppKit.NSAttributedString.alloc().initWithString_attributes_('Unofficial version installed ', attrs)
                 string.appendAttributedString_(update)
                 attrs[AppKit.NSForegroundColorAttributeName] = grayColor
-            elif obj.installErrors():
+            elif obj.hasInstallErrors():
                 attrs[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.redColor()
                 update = AppKit.NSAttributedString.alloc().initWithString_attributes_(f"{obj.installErrors()} ", attrs)
                 string.appendAttributedString_(update)
