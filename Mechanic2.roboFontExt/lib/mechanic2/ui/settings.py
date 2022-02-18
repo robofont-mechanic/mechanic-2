@@ -248,7 +248,7 @@ class Settings(BaseWindowController):
                 item = None
                 try:
                     with open(path, "rb") as f:
-                        item = yaml.save_load(f.read())
+                        item = yaml.safe_load(f.read())
                 except Exception as e:
                     logger.error("Cannot read single extension item '%s'" % path)
                     logger.error(e)
