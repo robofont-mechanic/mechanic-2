@@ -151,7 +151,7 @@ class MechanicController(BaseWindowController):
     def _makeExtensionItem(self, extensionData, itemClass, url):
         try:
             item = MCExtensionListItem(
-                itemClass(extensionData, checkForUpdates=self._shouldCheckForUpdates)
+                itemClass(extensionData)
             )
             self._wrappedItems.append(item)
         except Exception as e:
@@ -199,7 +199,7 @@ class MechanicController(BaseWindowController):
         for singleExtension in getExtensionDefault("com.mechanic.singleExtensionItems"):
             try:
                 item = MCExtensionListItem(
-                    ExtensionYamlItem(singleExtension, checkForUpdates=self._shouldCheckForUpdates)
+                    ExtensionYamlItem(singleExtension)
                 )
                 self._wrappedItems.append(item)
             except Exception as e:

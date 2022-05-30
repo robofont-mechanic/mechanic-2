@@ -70,7 +70,7 @@ class AddURLSheet(BaseWindowController):
     def _checkURLCallback(self, url, data, error):
         self._valid = True
         self._validation_report = ""
-        
+
         if error:
             self._valid = False
             self._validation_report = "Cannot load url '%s'" % url
@@ -95,7 +95,7 @@ class AddURLSheet(BaseWindowController):
             self._validation_report = "URL already existing"
             self.showMessage("Invalid URL", self._validation_report)
             return
-        
+
         if not self._valid:
             self.showMessage("Not a valid extension json URL.", "The url '%s' is not a valid. \n\n%s" % (self.w.url.get(), self._validation_report))
 
@@ -248,7 +248,7 @@ class Settings(BaseWindowController):
                 item = None
                 try:
                     with open(path, "rb") as f:
-                        item = yaml.load(f.read())
+                        item = yaml.safe_load(f.read())
                 except Exception as e:
                     logger.error("Cannot read single extension item '%s'" % path)
                     logger.error(e)
