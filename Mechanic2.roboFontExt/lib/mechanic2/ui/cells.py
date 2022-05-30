@@ -9,22 +9,70 @@ class MCExtensionCirleCell(AppKit.NSTextFieldCell):
         controller = self.objectValue()
         obj = controller.extensionObject()
 
-        if obj.isExtensionInstalled():
+        image = None
+        if obj.hasInstallErrors():
+            image = InstallErroIndicator()
+        elif obj.isExtensionInstalled():
             if obj.isExtensionFromStore() and obj.extensionStoreKey() is None:
                 image = NotBoughtIndicator()
             elif obj.extensionNeedsUpdate():
                 image = UpdateIndicator()
             else:
                 image = InstalledIndicator()
+
+        if image is not None:
             size = image.size()
             x = frame.origin.x + (frame.size.width - size.width) / 2 + 2
             y = frame.origin.y + (frame.size.height - size.height) / 2 - 1
             image.drawAtPoint_fromRect_operation_fraction_(
                 (x, y),
-                ((0, 0), (9, 9)),
+                ((0, 0), size),
                 AppKit.NSCompositeSourceOver,
                 1.0
             )
+
+
+@remember
+def InstallErroIndicator():
+    width = 20
+    height = 20
+    image = AppKit.NSImage.alloc().initWithSize_((width, height))
+    image.lockFocus()
+
+    path = AppKit.NSBezierPath.bezierPathWithOvalInRect_(((8, 14), (4, 4)))
+    path.appendBezierPathWithRect_(((8.5, 6), (3, 7)))
+
+    path.fill()
+
+    trianglePath = AppKit.NSBezierPath.bezierPath()
+    trianglePath.moveToPoint_((0, 18))
+    trianglePath.lineToPoint_((2, 20))
+
+    trianglePath.lineToPoint_((18, 20))
+    trianglePath.lineToPoint_((20, 18))
+
+    trianglePath.lineToPoint_((11, 0))
+    trianglePath.lineToPoint_((9, 0))
+    trianglePath.closePath()
+    trianglePath.addClip()
+
+    color1 = AppKit.NSColor.redColor()
+    color2 = AppKit.NSColor.colorWithCalibratedWhite_alpha_(0.0, 0.1)
+    color3 = AppKit.NSColor.whiteColor()
+
+    color1.set()
+    trianglePath.fill()
+
+    color2.set()
+    trianglePath.setLineWidth_(2)
+    trianglePath.stroke()
+
+    color3.set()
+    path.fill()
+
+    image.unlockFocus()
+
+    return image
 
 
 @remember

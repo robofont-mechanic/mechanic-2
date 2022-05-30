@@ -10,7 +10,7 @@ from AppKit import NSToolbarFlexibleSpaceItemIdentifier, NSPredicate
 from AppKit import NSEvent, NSAlternateKeyMask
 
 from mojo.events import addObserver, removeObserver
-from mojo.extensions import getExtensionDefault, setExtensionDefault
+from mojo.extensions import getExtensionDefault, setExtensionDefault, ExtensionBundle
 
 from defconAppKit.windows.baseWindow import BaseWindowController
 
@@ -27,6 +27,8 @@ from mechanic2.extensionItem import EXTENSION_DID_UNINSTALL_EVENT_KEY
 
 
 logger = logging.getLogger("Mechanic")
+
+mechanic2ExtensionBundle = ExtensionBundle("Mechanic2")
 
 
 class MCExtensionListItem(NSObject):
@@ -56,7 +58,7 @@ class MechanicController(BaseWindowController):
 
     def __init__(self, checkForUpdates=False, shouldLoad=True):
 
-        self.w = vanilla.Window((600, 300), "Mechanic 2.0", minSize=(550, 200))
+        self.w = vanilla.Window((600, 300), f"Mechanic {mechanic2ExtensionBundle.version}", minSize=(550, 200))
 
         # building toolbar
         self._toolbarSearch = vanilla.SearchBox((0, 0, 300, 0), callback=self.toolbarSearch)

@@ -30,13 +30,13 @@ class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
             if obj.extensionPrice():
                 priceColor = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.7, 0, 1)
                 attrs[AppKit.NSForegroundColorAttributeName] = priceColor
-                price = AppKit.NSAttributedString.alloc().initWithString_attributes_('\u2003%s' % obj.extensionPrice(), attrs)
+                price = AppKit.NSAttributedString.alloc().initWithString_attributes_(f'\u2003{obj.extensionPrice()}', attrs)
                 string.appendAttributedString_(price)
 
             grayColor = AppKit.NSColor.colorWithCalibratedWhite_alpha_(0.6, 1)
             attrs[AppKit.NSForegroundColorAttributeName] = grayColor
 
-            space = AppKit.NSAttributedString.alloc().initWithString_attributes_(u'\u2003', attrs)
+            space = AppKit.NSAttributedString.alloc().initWithString_attributes_('\u2003', attrs)
             string.appendAttributedString_(space)
 
             author = AppKit.NSAttributedString.alloc().initWithString_attributes_(obj.extensionDeveloper() or '', attrs)
@@ -57,20 +57,24 @@ class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
                 update = AppKit.NSAttributedString.alloc().initWithString_attributes_('Unofficial version installed ', attrs)
                 string.appendAttributedString_(update)
                 attrs[AppKit.NSForegroundColorAttributeName] = grayColor
-
+            elif obj.hasInstallErrors():
+                attrs[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.redColor()
+                update = AppKit.NSAttributedString.alloc().initWithString_attributes_(f"{obj.installErrors()} ", attrs)
+                string.appendAttributedString_(update)
+                attrs[AppKit.NSForegroundColorAttributeName] = grayColor
             if obj.extensionNeedsUpdate():
                 attrs[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.orangeColor()
-                update = AppKit.NSAttributedString.alloc().initWithString_attributes_('Found update %s \u2192 %s\u2003' % (obj.extensionVersion(), obj.remoteVersion()), attrs)
+                update = AppKit.NSAttributedString.alloc().initWithString_attributes_(f'Found update {obj.extensionVersion()} \u2192 {obj.remoteVersion()}\u2003', attrs)
                 string.appendAttributedString_(update)
                 attrs[AppKit.NSForegroundColorAttributeName] = grayColor
             elif obj.isExtensionInstalled():
-                version = AppKit.NSAttributedString.alloc().initWithString_attributes_('%s\u2003' % obj.extensionVersion(), attrs)
+                version = AppKit.NSAttributedString.alloc().initWithString_attributes_(f'{obj.extensionVersion()}\u2003', attrs)
                 string.appendAttributedString_(version)
 
             description = AppKit.NSAttributedString.alloc().initWithString_attributes_(obj.extensionDescription() or '\u2014', attrs)
             string.appendAttributedString_(description)
         except Exception as e:
-            logger.error("Cannot format '%s'" % obj)
+            logger.error(f"Cannot format '{obj}'")
             logger.error(e)
 
         return string
