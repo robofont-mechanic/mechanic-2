@@ -289,6 +289,8 @@ class BaseExtensionItem(object):
                     valid.append(False)
                     if isinstance(clss, tuple):
                         clssName = " or ".join([c.__name__ for c in clss])
+                    else:
+                        clssName = clss.__name__
                     report.append("'%s' key must be a '%s', a '%s' is given." % (key, clssName, data[key].__class__.__name__))
 
         _validateKeys(self.validationRequiredKeys, isRequired=True)
