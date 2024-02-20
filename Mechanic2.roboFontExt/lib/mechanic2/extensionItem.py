@@ -6,7 +6,7 @@ import shutil
 import logging
 import plistlib
 
-from distutils.version import LooseVersion
+from packaging.version import Version
 from urllib.parse import urlparse
 
 from Foundation import NSString, NSUTF8StringEncoding
@@ -163,7 +163,7 @@ class BaseExtensionItem(object):
         bundle = self.extensionBundle()
         # check if the bundle exists
         if bundle.bundleExists():
-            return LooseVersion(bundle.version)
+            return Version(bundle.version)
         return None
 
     def extensionNeedsUpdate(self):
@@ -412,14 +412,14 @@ class ExtensionRepositoryItem(BaseExtensionItem):
             logger.error(e)
 
         # set the version
-        self._remoteVersion = info.get("version", None)
+        self._remoteVersion = info.get("version", "0.0")
         if self._remoteVersion is not None:
             # flag the extension as needing an update
             extensionVersion = self.extensionVersion()
             if extensionVersion is None:
                 self._needsUpdate = False
             else:
-                self._needsUpdate = extensionVersion < self._remoteVersion
+                self._needsUpdate = extensionVersion < self.remoteVersion()
 
         postEvent(EXTENSION_DID_CHECK_FOR_UPDATES_EVENT_KEY, item=self)
 
@@ -478,7 +478,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
         """
         Return the version of the repository, retrieved from the `info.plist`.
         """
-        return LooseVersion(self._remoteVersion)
+        return Version(self._remoteVersion)
 
     # helpers
 
