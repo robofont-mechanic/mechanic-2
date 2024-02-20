@@ -163,7 +163,7 @@ class BaseExtensionItem(object):
         bundle = self.extensionBundle()
         # check if the bundle exists
         if bundle.bundleExists():
-            return Version(bundle.version)
+            return bundle.version
         return None
 
     def extensionNeedsUpdate(self):
@@ -419,7 +419,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
             if extensionVersion is None:
                 self._needsUpdate = False
             else:
-                self._needsUpdate = extensionVersion < self.remoteVersion()
+                self._needsUpdate = Version(extensionVersion) < Version(self.remoteVersion())
 
         postEvent(EXTENSION_DID_CHECK_FOR_UPDATES_EVENT_KEY, item=self)
 
@@ -478,7 +478,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
         """
         Return the version of the repository, retrieved from the `info.plist`.
         """
-        return Version(self._remoteVersion)
+        return self._remoteVersion
 
     # helpers
 
@@ -543,7 +543,7 @@ class ExtensionStoreItem(BaseExtensionItem):
             if extensionVersion is None:
                 self._needsUpdate = False
             else:
-                self._needsUpdate = extensionVersion < self.remoteVersion()
+                self._needsUpdate = Version(extensionVersion) < Version(self.remoteVersion())
         postEvent(EXTENSION_DID_CHECK_FOR_UPDATES_EVENT_KEY, item=self)
 
     @remember
