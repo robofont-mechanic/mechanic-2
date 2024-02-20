@@ -1,4 +1,5 @@
 import AppKit
+from objc import super
 
 from mechanic2.mechanicTools import remember
 
