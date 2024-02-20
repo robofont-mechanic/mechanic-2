@@ -163,7 +163,7 @@ class BaseExtensionItem(object):
         bundle = self.extensionBundle()
         # check if the bundle exists
         if bundle.bundleExists():
-            return Version(bundle.version)
+            return bundle.version
         return None
 
     def extensionNeedsUpdate(self):
