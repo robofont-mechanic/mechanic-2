@@ -5,6 +5,7 @@ import tempfile
 import shutil
 import logging
 import plistlib
+import yaml
 
 from packaging.version import Version
 from urllib.parse import urlparse
@@ -404,7 +405,12 @@ class ExtensionRepositoryItem(BaseExtensionItem):
         try:
             # try to parse the info.plist from string
             # and fail silently with a custom message
-            info = plistlib.loads(data)
+            pathExtension = url.pathExtension()
+            if pathExtension in ("yaml", "yml"):
+                info = yaml.load(data)
+            elif pathExtension == "plist":
+                info = plistlib.loads(data)
+
         except Exception as e:
             # cannot parse the plist
             info = {}
