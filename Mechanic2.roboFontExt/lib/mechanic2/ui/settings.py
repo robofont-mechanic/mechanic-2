@@ -30,6 +30,7 @@ def registerMechanicDefaults(reset=False):
         "com.mechanic.checkForUpdate": True,
         "com.mechanic.singleExtensionItems": [],
         "com.mechanic.lastUpdateCheck": 0,
+        "com.mechanic.githubToken": ""
     }
     if reset:
         for key in defaults:
@@ -121,9 +122,9 @@ class Settings(BaseWindowController):
         self._shouldCallCallback = False
 
         if debug:
-            self.w = vanilla.Window((400, 420))
+            self.w = vanilla.Window((400, 460))
         else:
-            self.w = vanilla.Sheet((400, 420), parentWindow=parentWindow)
+            self.w = vanilla.Sheet((400, 460), parentWindow=parentWindow)
 
         y = 10
         self.w.checkForUpdate = vanilla.CheckBox((10, y, -10, 22), "Check for Updates on Startup.")
@@ -143,8 +144,8 @@ class Settings(BaseWindowController):
         )
         y += 130
         segmentDescriptions = [dict(title="+"), dict(title="-")]
-        self.w.addURL = vanilla.SegmentedButton((12, y, 100, 20), segmentDescriptions, selectionStyle="momentary", callback=self.addDelURLCallback)
-        self.w.addURL.getNSSegmentedButton().setSegmentStyle_(AppKit.NSSegmentStyleSmallSquare)
+        self.w.addURL = vanilla.SegmentedButton((12, y, 50, 20), segmentDescriptions, selectionStyle="momentary", callback=self.addDelURLCallback)
+        #self.w.addURL.getNSSegmentedButton().setSegmentStyle_(AppKit.NSSegmentStyleSmallSquare)
         y += 30
 
         self.w.h2 = vanilla.HorizontalLine((0, y, 0, 1))
@@ -161,9 +162,15 @@ class Settings(BaseWindowController):
         )
         y += 130
         segmentDescriptions = [dict(title="+"), dict(title="-")]
-        self.w.addSingleExtenions = vanilla.SegmentedButton((12, y, 100, 20), segmentDescriptions, selectionStyle="momentary", callback=self.addDelSingleExtensionCallback)
-        self.w.addSingleExtenions.getNSSegmentedButton().setSegmentStyle_(AppKit.NSSegmentStyleSmallSquare)
+        self.w.addSingleExtenions = vanilla.SegmentedButton((12, y+2, 50, 20), segmentDescriptions, selectionStyle="momentary", callback=self.addDelSingleExtensionCallback)
+        #self.w.addSingleExtenions.getNSSegmentedButton().setSegmentStyle_(AppKit.NSSegmentStyleSmallSquare)
         y += 30
+
+        self.w.h3 = vanilla.HorizontalLine((0, y, 0, 1))
+        y += 10
+
+        self.w.githubTokenText = vanilla.TextBox((10, y, 100, 22), "Github Token:")
+        self.w.githubToken = vanilla.SecureEditText((105, y, -10, 22))
 
         self.w.resetButton = vanilla.Button((10, -30, 60, 20), "Reset", callback=self.resetCallback, sizeStyle="small")
 
@@ -188,6 +195,8 @@ class Settings(BaseWindowController):
         # single items
         singleItems = list(getExtensionDefault("com.mechanic.singleExtensionItems"))
         self.w.singleExtenions.set(singleItems)
+        # github token
+        self.w.githubToken.set(getExtensionDefault("com.mechanic.githubToken"))
 
     def saveToDefaults(self):
         # check for updates
@@ -199,6 +208,9 @@ class Settings(BaseWindowController):
         # single items
         singleItems = list(self.w.singleExtenions.get())
         setExtensionDefault("com.mechanic.singleExtensionItems", singleItems)
+        # github token
+        githubToken = self.w.githubToken.get()
+        setExtensionDefault("com.mechanic.githubToken", githubToken)
 
     def createURLItems(self, urls):
         return [self.createURLItem(url) for url in urls]

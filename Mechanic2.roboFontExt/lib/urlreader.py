@@ -55,10 +55,12 @@ class URLReader(object):
                  quote_url_path=True, force_https=False,
                  use_cache=False,
                  cache_location=CACHE_DIRECTORY_URL,
-                 wait_until_done=False):
+                 wait_until_done=False,
+                 headers=None):
 
         self._reader = _URLReader.alloc().init()
         self._reader.setTimeout_(timeout)
+        self._reader.setHeaders_(headers)
         self._quote_url_path = quote_url_path
         self._force_https = force_https
         self._cache_location = cache_location
@@ -150,6 +152,7 @@ class _URLReader(NSObject):
         self = objc.super(_URLReader, self).init()
         self._session = None
         self._timeout = None
+        self._headers = None
         self._callbacks = {}
         self._config = NSURLSessionConfiguration.defaultSessionConfiguration()
         # this is only available in macOS 10.13+
@@ -165,6 +168,8 @@ class _URLReader(NSObject):
         if self._cache is not None:
             self._config.setURLCache_(self._cache)
             self._config.setRequestCachePolicy_(self._requestCachePolicy)
+        if self._headers is not None:
+            self._config.setHTTPAdditionalHeaders_(self._headers)
         self._session = NSURLSession.sessionWithConfiguration_(self._config)
 
     def setTimeout_(self, timeout):
@@ -187,6 +192,10 @@ class _URLReader(NSObject):
                 memoryCapacity, diskCapacity, url.relativePath())
 
         self._requestCachePolicy = NSURLRequestReturnCacheDataElseLoad
+        self.setupSession()
+
+    def setHeaders_(self, headers):
+        self._headers = headers
         self.setupSession()
 
     def makeCachedResponseWithData_forURL_(self, data, url):

@@ -14,7 +14,7 @@ from mojo.extensions import getExtensionDefault, setExtensionDefault, ExtensionB
 
 from defconAppKit.windows.baseWindow import BaseWindowController
 
-from mechanic2 import DefaultURLReader, URLReaderError
+from mechanic2 import DefaultURLReader, GithubDefaultURLReader, URLReaderError
 from mechanic2.ui.cells import MCExtensionCirleCell, MCImageTextFieldCell
 from mechanic2.ui.formatters import MCExtensionDescriptionFormatter
 from mechanic2.ui.settings import Settings, extensionStoreDataURL
@@ -31,6 +31,118 @@ logger = logging.getLogger("Mechanic")
 mechanic2ExtensionBundle = ExtensionBundle("Mechanic2")
 
 
+class MechanicListItemPopoverController:
+
+    """
+    releaseJsonURL spec:
+    (github release json)
+
+    [
+        dict(
+            name=...                       str
+            html_url=...                   str
+            prerelease=..                  bool
+            draft=..                       bool
+            zipball_url=..                 str
+            assets=[
+                name=..                    str
+                browser_download_url=..    str
+            ]
+        ),
+        ...
+    ]
+    """
+
+    def __init__(self, item, listView):
+        tableView = listView.getNSTableView()
+        relativeRect = tableView.rectOfRow_(tableView.selectedRow())
+        self.item = item
+        if item.releaseJsonURL() and item.isGithub():
+            # for now only github is supported
+            GithubDefaultURLReader.fetch(item.releaseJsonURL(), self._makeExtensionReleaseItems)
+
+        self.w = vanilla.Popover((330, 300), behavior="semitransient")
+        self.w.releases = vanilla.List(
+            (10, 10, -10, -40),
+            [],
+            columnDescriptions=[
+                dict(title=f"{item.extensionName()} Releases", key="releaseName", editable=False),
+                dict(title="β", key="preRelease", width=25, editable=False),
+                dict(title="✎", key="draft", width=25, editable=False),
+            ],
+            doubleClickCallback=self.releasesDoubleClickCallback
+        )
+
+        self.w.installRelease = vanilla.Button((-150, -30, -10, 22), "Install Release", callback=self.installReleaseCallback)
+        self.w.installRelease.show(False)
+        self.w.openInBrowser = vanilla.Button((10, -30, 150, 22), f"View on {self.item.service().title()}", callback=self.openInBrowserCallback)
+        self.w.open(parentView=tableView, relativeRect=relativeRect, preferredEdge="bottom")
+
+    def getPopover(self):
+        return self.w
+
+    def releasesDoubleClickCallback(self, sender):
+        selection = self.w.releases.getSelection()
+        if selection:
+            index = selection[0]
+            releaseItem = self.w.releases[index]
+            self.item.openURL(url=releaseItem["html_url"], background=True)
+
+    def _makeExtensionReleaseItems(self, url, data, error):
+        if error:
+            # cannot get the contents of the releases
+            logger.error("Cannot read '%s' for '%s'" % (url, self.item.extensionName()))
+            logger.error(error)
+
+        try:
+            # try to parse the release json from string
+            # and fail silently with a custom message
+            data = bytes(data)
+            releaseData = json.loads(data)
+
+        except Exception as e:
+            # cannot parse the plist
+            releaseData = []
+            logger.error("Cannot parse '%s' for '%s'" % (url, self.item.extensionName()))
+            logger.error(e)
+
+        try:
+            releaseItems = [
+                dict(
+                    releaseName=data.get("name"),
+                    preRelease="•" if data.get("prerelease", False) else "",
+                    draft="•" if data.get("draft", False) else "",
+                    data=data
+                ) for data in releaseData
+            ]
+        except Exception as e:
+            releaseItems = []
+            logger.error(f"Cannot extract release items for '{self.item.extensionName()}'")
+            logger.error(releaseData)
+            logger.error(e)
+
+        self.w.installRelease.show(len(releaseItems))
+        self.w.releases.set(releaseItems)
+
+    def installReleaseCallback(self, sender):
+        selection = self.w.releases.getSelection()
+        if selection:
+            index = selection[0]
+            releaseItem = self.w.releases[index]
+            data = releaseItem["data"]
+            if data["assets"]:
+                for asset in data["assets"]:
+                    if asset["name"] == self.item.extensionPath.split("/")[-1]:
+                        zipPath = asset["browser_download_url"]
+            else:
+                zipPath = data["zipball_url"]
+
+            GithubDefaultURLReader.fetch(zipPath, self.item._remoteInstallCallback)
+
+    def openInBrowserCallback(self, sender):
+        self.item.openRemoteURL(background=True)
+
+
 class MCExtensionListItem(NSObject):
 
     def __new__(cls, *args, **kwargs):
@@ -38,6 +150,9 @@ class MCExtensionListItem(NSObject):
 
     def __init__(self, extensionObject=None):
         self._extensionObject = extensionObject
+
+    def length(self):
+        return 0
 
     def copyWithZone_(self, zone):
         new = self.__class__.allocWithZone_(zone).init()
@@ -416,10 +531,17 @@ class MechanicController(BaseWindowController):
             button.show(False)
 
     def extensionListDoubleClickCallback(self, sender):
+        # open popover for the selected row (only the first one row in the selection)
+        # show a button to open the repo in a browser
+        # list all releases
+        def popoverCloseCallback(sender):
+            del self._mechanicListItemPopoverController
+
         items = self.getSelection()
-        multiSelection = len(items) > 1
-        for item in items:
-            item.openRemoteURL(multiSelection)
+        if items:
+            # keep a reference
+            self._mechanicListItemPopoverController = MechanicListItemPopoverController(items[0], sender)
+            self._mechanicListItemPopoverController.getPopover().bind("did close", popoverCloseCallback)
 
     # buttons
 

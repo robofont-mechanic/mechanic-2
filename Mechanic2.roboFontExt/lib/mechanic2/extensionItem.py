@@ -269,6 +269,10 @@ class BaseExtensionItem(object):
         # subclass must overwrite this method
         raise NotImplementedError
 
+    def releaseJsonURL(self):
+        # subclass must overwrite this method
+        raise NotImplementedError
+
     def checkForUpdates(self):
         # subclass must overwrite this method
         raise NotImplementedError
@@ -367,6 +371,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
         self._remoteZipPath = self._data.get("zipPath")
         self._remoteInfoPath = self._data.get("infoPath")
         self._releasesPath = self._data.get("releasesPath")
+        self._releaseJsonURL = self._data.get("releaseJsonURL")
 
         if "extensionName" not in self._data:
             self._data["extensionName"] = self.extensionPath.split("/")[-1]
@@ -382,17 +387,20 @@ class ExtensionRepositoryItem(BaseExtensionItem):
         github=dict(
             zipPath="https://api.github.com/repos{repositoryPath}/zipball",
             infoPlistPath="https://raw.githubusercontent.com{repositoryPath}/master/{extensionPath}/info.plist",
-            releasesPath="https://github.com{repositoryPath}/releases"
+            releasesPath="https://github.com{repositoryPath}/releases",
+            releasesJsonPath="https://api.github.com/repos{repositoryPath}/releases",
         ),
         gitlab=dict(
             zipPath="https://gitlab.com{repositoryPath}/-/archive/master/{repositoryName}-master.zip",
             infoPlistPath="https://gitlab.com{repositoryPath}/raw/master/{extensionPath}/info.plist",
-            releasesPath="https://gitlab.com{repositoryPath}/-/releases"
+            releasesPath="https://gitlab.com{repositoryPath}/-/releases",
+            releasesJsonPath=""
         ),
         bitbucket=dict(
             zipPath="https://bitbucket.org{repositoryPath}/get/master.zip",
             infoPlistPath="https://bitbucket.org{repositoryPath}/src/master/{extensionPath}/info.plist",
-            releasesPath="https://bitbucket.org{repositoryPath}/downloads/?tab=tags"
+            releasesPath="https://bitbucket.org{repositoryPath}/downloads/?tab=tags",
+            releasesJsonPath=""
         )
     )
 
@@ -408,7 +416,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
             pathExtension = url.pathExtension()
             if pathExtension in ("yaml", "yml"):
                 info = yaml.load(data)
-            elif pathExtension == "plist":
+            else:
                 info = plistlib.loads(data)
 
         except Exception as e:
@@ -480,6 +488,17 @@ class ExtensionRepositoryItem(BaseExtensionItem):
             )
         return self._releasesPath
 
+    def releaseJsonURL(self):
+        if self._releaseJsonURL is None:
+            formatter = self.urlFormatters[self.service()].get("releasesJsonPath")
+            # format the info with the given data
+            self._releaseJsonURL = formatter.format(
+                repositoryPath=self.repositoryParsedURL.path,
+                repositoryName=self.extensionName(),
+                extensionPath=self.extensionPath
+            )
+        return self._releaseJsonURL
+
     def remoteVersion(self):
         """
         Return the version of the repository, retrieved from the `info.plist`.
@@ -526,7 +545,8 @@ class ExtensionStoreItem(BaseExtensionItem):
         ("description", str),
         ("tags", list),
         ("date", str),
-        ("releasesURL", str)
+        ("releasesURL", str),
+        ("releaseJsonURL", str),
     ]
 
     def _init(self):
@@ -538,6 +558,9 @@ class ExtensionStoreItem(BaseExtensionItem):
 
     def releasesURL(self):
         return self._data.get("releasesURL")
+
+    def releaseJsonURL(self):
+        return self._data.get("releaseJsonURL")
 
     def remoteVersion(self):
         return self._data["version"]
