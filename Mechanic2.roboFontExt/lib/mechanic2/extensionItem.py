@@ -565,6 +565,9 @@ class ExtensionStoreItem(BaseExtensionItem):
     def remoteVersion(self):
         return self._data["version"]
 
+    def service(self):
+        return "Extension Store"
+
     def checkForUpdates(self):
         if self.remoteVersion() is not None:
             # flag the extension as needing an update

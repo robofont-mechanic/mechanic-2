@@ -59,8 +59,8 @@ class URLReader(object):
                  headers=None):
 
         self._reader = _URLReader.alloc().init()
-        self._reader.setTimeout_(timeout)
-        self._reader.setHeaders_(headers)
+        self.setTimeout(timeout)
+        self.setHeaders(headers)
         self._quote_url_path = quote_url_path
         self._force_https = force_https
         self._cache_location = cache_location
@@ -73,6 +73,12 @@ class URLReader(object):
                 self._cache_location = \
                     NSURL.URLWithString_(self._cache_location)
             self._reader.setCacheAtDirectoryURL_(self._cache_location)
+
+    def setTimeout(self, timeout):
+        self._reader.setTimeout_(timeout)
+
+    def setHeaders(self, headers):
+        self._reader.setHeaders_(headers)
 
     @property
     def done(self):

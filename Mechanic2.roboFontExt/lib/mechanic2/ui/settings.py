@@ -8,9 +8,10 @@ from Foundation import NSString, NSUTF8StringEncoding
 
 from defconAppKit.windows.baseWindow import BaseWindowController
 
-from mojo.extensions import getExtensionDefault, setExtensionDefault, registerExtensionDefaults, removeExtensionDefault, setPassword, getPassword
+from mojo.extensions import getExtensionDefault, setExtensionDefault, registerExtensionDefaults, removeExtensionDefault
+from mojo.UI import setPassword, getPassword, deletePassword
 
-from mechanic2 import DefaultURLReader
+from mechanic2 import DefaultURLReader, GithubDefaultURLReader
 from mechanic2.extensionItem import ExtensionYamlItem
 
 
@@ -209,7 +210,11 @@ class Settings(BaseWindowController):
         setExtensionDefault("com.mechanic.singleExtensionItems", singleItems)
         # github token
         githubToken = self.w.githubToken.get()
-        setPassword(service="com.mechanic.githubToken", username=AppKit.NSUserName(), password=githubToken)
+        setPassword(service="com.mechanic.githubToken", username=str(AppKit.NSUserName()), password=str(githubToken))
+        if githubToken:
+            GithubDefaultURLReader.setHeaders(dict(Authorization='token ' + githubToken))
+        else:
+            GithubDefaultURLReader.setHeaders(None)
 
     def createURLItems(self, urls):
         return [self.createURLItem(url) for url in urls]

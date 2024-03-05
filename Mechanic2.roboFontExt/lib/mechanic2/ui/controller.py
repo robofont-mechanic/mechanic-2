@@ -40,6 +40,7 @@ class MechanicListItemPopoverController:
     [
         dict(
             name=...                       str
+            tag_name=...                   str
             html_url=...                   str
             prerelease=..                  bool
             draft=..                       bool
@@ -61,7 +62,7 @@ class MechanicListItemPopoverController:
             # for now only github is supported
             GithubDefaultURLReader.fetch(item.releaseJsonURL(), self._makeExtensionReleaseItems)
 
-        self.w = vanilla.Popover((330, 300), behavior="semitransient")
+        self.w = vanilla.Popover((370, 260), behavior="semitransient")
         self.w.releases = vanilla.List(
             (10, 10, -10, -40),
             [],
@@ -75,7 +76,7 @@ class MechanicListItemPopoverController:
 
         self.w.installRelease = vanilla.Button((-150, -30, -10, 22), "Install Release", callback=self.installReleaseCallback)
         self.w.installRelease.show(False)
-        self.w.openInBrowser = vanilla.Button((10, -30, 150, 22), f"View on {self.item.service().title()}", callback=self.openInBrowserCallback)
+        self.w.openInBrowser = vanilla.Button((10, -30, -170, 22), f"View on {self.item.service().title()}", callback=self.openInBrowserCallback)
         self.w.open(parentView=tableView, relativeRect=relativeRect, preferredEdge="bottom")
 
     def getPopover(self):
@@ -107,19 +108,30 @@ class MechanicListItemPopoverController:
             logger.error(e)
 
         try:
-            releaseItems = [
-                dict(
-                    releaseName=data.get("name"),
-                    preRelease="•" if data.get("prerelease", False) else "",
-                    draft="•" if data.get("draft", False) else "",
-                    data=data
-                ) for data in releaseData
-            ]
+            releaseItems = []
+            for data in releaseData:
+                releaseName = data.get("name")
+                if not releaseName:
+                    releaseName = data.get("tag_name")
+                releaseItems.append(
+                    dict(
+                        releaseName=releaseName,
+                        preRelease="•" if data.get("prerelease", False) else "",
+                        draft="•" if data.get("draft", False) else "",
+                        data=data
+                    )
+                )
         except Exception as e:
             releaseItems = []
             logger.error(f"Cannot extract release items for '{self.item.extensionName()}'")
             logger.error(releaseData)
             logger.error(e)
+            if "message" in releaseData:
+                # show the github message
+                vanilla.dialogs.message(
+                    messageText=f"Cannot extract release items for '{self.item.extensionName()}'.",
+                    informativeText=f"Set a Github token in the Mechanic settings.\n\n{releaseData['message']}"
+                )
 
         self.w.installRelease.show(len(releaseItems))
         self.w.releases.set(releaseItems)

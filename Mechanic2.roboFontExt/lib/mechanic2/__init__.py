@@ -1,5 +1,5 @@
 import AppKit
-from mojo.extensions import getExtensionDefault, getPassword
+from mojo.UI import getPassword
 
 from urlreader import URLReader, URLReaderError
 from urlreader import USER_CACHE_DIRECTORY_URL
@@ -29,7 +29,10 @@ if githubToken:
         headers=dict(Authorization='token ' + githubToken)
     )
 else:
-    GithubDefaultURLReader = DefaultURLReader
+    GithubDefaultURLReader = URLReader(
+        force_https=True,
+        timeout=60
+    )
 
 
 # An URLReader that caches more aggressively and tries to serve
