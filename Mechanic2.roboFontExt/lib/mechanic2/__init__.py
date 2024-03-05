@@ -1,4 +1,5 @@
-from mojo.extensions import getExtensionDefault
+import AppKit
+from mojo.extensions import getExtensionDefault, getPassword
 
 from urlreader import URLReader, URLReaderError
 from urlreader import USER_CACHE_DIRECTORY_URL
@@ -20,7 +21,7 @@ DefaultURLReader = URLReader(
 )
 
 # Github URLReader if a token is set in the preferences.
-githubToken = getExtensionDefault("com.mechanic.githubToken")
+githubToken = getPassword(service="com.mechanic.githubToken", username=AppKit.NSUserName())
 if githubToken:
     GithubDefaultURLReader = URLReader(
         force_https=True,

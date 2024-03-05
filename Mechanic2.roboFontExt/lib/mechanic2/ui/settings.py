@@ -8,7 +8,7 @@ from Foundation import NSString, NSUTF8StringEncoding
 
 from defconAppKit.windows.baseWindow import BaseWindowController
 
-from mojo.extensions import getExtensionDefault, setExtensionDefault, registerExtensionDefaults, removeExtensionDefault
+from mojo.extensions import getExtensionDefault, setExtensionDefault, registerExtensionDefaults, removeExtensionDefault, setPassword, getPassword
 
 from mechanic2 import DefaultURLReader
 from mechanic2.extensionItem import ExtensionYamlItem
@@ -30,7 +30,6 @@ def registerMechanicDefaults(reset=False):
         "com.mechanic.checkForUpdate": True,
         "com.mechanic.singleExtensionItems": [],
         "com.mechanic.lastUpdateCheck": 0,
-        "com.mechanic.githubToken": ""
     }
     if reset:
         for key in defaults:
@@ -196,7 +195,7 @@ class Settings(BaseWindowController):
         singleItems = list(getExtensionDefault("com.mechanic.singleExtensionItems"))
         self.w.singleExtenions.set(singleItems)
         # github token
-        self.w.githubToken.set(getExtensionDefault("com.mechanic.githubToken"))
+        self.w.githubToken.set(getPassword(service="com.mechanic.githubToken", username=AppKit.NSUserName()))
 
     def saveToDefaults(self):
         # check for updates
@@ -210,7 +209,7 @@ class Settings(BaseWindowController):
         setExtensionDefault("com.mechanic.singleExtensionItems", singleItems)
         # github token
         githubToken = self.w.githubToken.get()
-        setExtensionDefault("com.mechanic.githubToken", githubToken)
+        setPassword(service="com.mechanic.githubToken", username=AppKit.NSUserName(), password=githubToken)
 
     def createURLItems(self, urls):
         return [self.createURLItem(url) for url in urls]
