@@ -142,13 +142,11 @@ class MechanicListItemPopoverController:
             index = selection[0]
             releaseItem = self.w.releases[index]
             data = releaseItem["data"]
+            zipPath = data["zipball_url"]
             if data["assets"]:
                 for asset in data["assets"]:
                     if asset["name"].lower().endswith(".robofontext.zip"):
                         zipPath = asset["browser_download_url"]
-            else:
-                zipPath = data["zipball_url"]
-
             GithubDefaultURLReader.fetch(zipPath, self.item._remoteInstallCallback)
 
     def openInBrowserCallback(self, sender):
