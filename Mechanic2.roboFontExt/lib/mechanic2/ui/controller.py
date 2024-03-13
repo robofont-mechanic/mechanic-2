@@ -144,7 +144,7 @@ class MechanicListItemPopoverController:
             data = releaseItem["data"]
             if data["assets"]:
                 for asset in data["assets"]:
-                    if asset["name"] == self.item.extensionPath.split("/")[-1]:
+                    if asset["name"].lower().endswith(".robofontext.zip"):
                         zipPath = asset["browser_download_url"]
             else:
                 zipPath = data["zipball_url"]
