@@ -413,6 +413,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
         try:
             # try to parse the info.plist from string
             # and fail silently with a custom message
+            data = bytes(data)
             pathExtension = url.pathExtension()
             if pathExtension in ("yaml", "yml"):
                 info = yaml.safe_load(data)
