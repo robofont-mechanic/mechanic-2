@@ -415,7 +415,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
             # and fail silently with a custom message
             pathExtension = url.pathExtension()
             if pathExtension in ("yaml", "yml"):
-                info = yaml.load(data)
+                info = yaml.safe_load(data)
             else:
                 info = plistlib.loads(data)
 
