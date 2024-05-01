@@ -421,13 +421,14 @@ class MechanicController(BaseWindowController):
 
     def extensionDidCheckForUpdates(self, info):
         self._numExtensionsChecked += 1
-        if self._progress is not None:
-            self._progress.update()
 
         if self._numExtensionsChecked < len(self._extensionsToCheck):
             # drop out early if we’re still in the middle of checking
             # for extension updates
             return
+
+        if self._progress is not None:
+            self._progress.update()
 
         # By this point, all selected extensions have finished checking.
         # The self._didCheckForUpdates flag just ensures this block doesn’t
