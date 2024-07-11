@@ -87,7 +87,7 @@ class MechanicListItemPopoverController:
         if selection:
             index = selection[0]
             releaseItem = self.w.releases[index]
-            self.item.openURL(url=releaseItem["html_url"], background=True)
+            self.item.openUrl(url=releaseItem["html_url"], background=True)
 
     def _makeExtensionReleaseItems(self, url, data, error):
         if error:
