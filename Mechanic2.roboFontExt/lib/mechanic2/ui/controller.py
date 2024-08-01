@@ -226,7 +226,8 @@ class MechanicController(BaseWindowController):
             rowHeight=39
         )
 
-        self.w.checkForUpdates = vanilla.Button((10, -30, 160, 22), "Check For Updates", callback=self.checkForUpdatesCallback, sizeStyle="small")
+        self.w.checkForUpdates = vanilla.Button((10, -30, 130, 22), "Check For Updates", callback=self.checkForUpdatesCallback, sizeStyle="small")
+        self.w.checkForUpdatesInfo = vanilla.TextBox((146, -26, 120, 22), "", sizeStyle="small")
 
         self.w.purchaseButton = vanilla.Button((10, -30, 100, 22), "Purchase", callback=self.purchaseCallback)
         self.w.installButton = vanilla.Button((10, -30, 100, 22), "Install", callback=self.installCallback)
@@ -438,7 +439,7 @@ class MechanicController(BaseWindowController):
             now = time.time()
             setExtensionDefault("com.mechanic.lastUpdateCheck", now)
             title = time.strftime("Checked at %H:%M", time.localtime(now))
-            self.w.checkForUpdates.setTitle(title)
+            self.w.checkForUpdatesInfo.set(title)
 
             if self._progress is not None:
                 self._progress.close()
