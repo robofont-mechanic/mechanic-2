@@ -17,7 +17,7 @@ class MCExtensionCirleCell(AppKit.NSTextFieldCell):
             if obj.isExtensionFromStore() and obj.extensionStoreKey() is None:
                 image = NotBoughtIndicator()
             elif obj.extensionNeedsUpdate():
-                image = UpdateIndicator()
+                image = UpdateIndicator(obj.remoteIsBeta())
             else:
                 image = InstalledIndicator()
 
@@ -129,7 +129,7 @@ def InstalledIndicator():
 
 
 @remember
-def UpdateIndicator():
+def UpdateIndicator(isBeta=False):
     width = 9
     height = 9
     image = AppKit.NSImage.alloc().initWithSize_((width, height))
@@ -137,7 +137,10 @@ def UpdateIndicator():
 
     path = AppKit.NSBezierPath.bezierPathWithOvalInRect_(((0, 0), (9, 9)))
     path.addClip()
-    color1 = AppKit.NSColor.orangeColor()
+    if isBeta:
+        color1 = AppKit.NSColor.magentaColor()
+    else:
+        color1 = AppKit.NSColor.orangeColor()
 
     color1.set()
     path.setLineWidth_(5)

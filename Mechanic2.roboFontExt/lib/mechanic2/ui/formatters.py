@@ -63,8 +63,13 @@ class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
                 string.appendAttributedString_(update)
                 attrs[AppKit.NSForegroundColorAttributeName] = grayColor
             if obj.extensionNeedsUpdate():
-                attrs[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.orangeColor()
-                update = AppKit.NSAttributedString.alloc().initWithString_attributes_(f'Found update {obj.extensionVersion()} \u2192 {obj.remoteVersion()}\u2003', attrs)
+                if obj.remoteIsBeta():
+                    updateText = "Found beta update"
+                    attrs[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.magentaColor()
+                else:
+                    updateText = "Found update"
+                    attrs[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.orangeColor()
+                update = AppKit.NSAttributedString.alloc().initWithString_attributes_(f'{updateText} {obj.extensionVersion()} \u2192 {obj.remoteVersion()}\u2003', attrs)
                 string.appendAttributedString_(update)
                 attrs[AppKit.NSForegroundColorAttributeName] = grayColor
             elif obj.isExtensionInstalled():

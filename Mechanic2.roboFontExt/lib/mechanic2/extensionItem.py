@@ -261,6 +261,9 @@ class BaseExtensionItem(object):
         # subclass must overwrite this method
         raise NotImplementedError
 
+    def remoteIsBeta(self):
+        return "b" in self.remoteVersion()
+
     def remoteURL(self):
         # subclass must overwrite this method
         raise NotImplementedError

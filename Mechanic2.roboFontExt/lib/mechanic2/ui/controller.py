@@ -459,7 +459,7 @@ class MechanicController(BaseWindowController):
                 # ...scroll to the top of the list if there are items which need updating
                 self.w.extensionList.getNSTableView().scrollRowToVisible_(0)
                 # ...and select them for easy, one-click update all by the user
-                extensionItemsToUpdateIndices = [self.w.extensionList.index(x) for x in extensionsItemsToUpdate]
+                extensionItemsToUpdateIndices = [self.w.extensionList.index(x) for x in extensionsItemsToUpdate if not x.extensionObject().remoteIsBeta()]
                 self.w.extensionList.setSelection(extensionItemsToUpdateIndices)
 
             self._didCheckForUpdates = True
