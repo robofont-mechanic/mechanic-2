@@ -430,7 +430,7 @@ class ExtensionRepositoryItem(BaseExtensionItem):
             logger.error(e)
 
         # set the version
-        self._remoteVersion = info.get("version", "0.0")
+        self._remoteVersion = str(info.get("version", "0.0"))
         if self._remoteVersion is not None:
             # flag the extension as needing an update
             extensionVersion = self.extensionVersion()
