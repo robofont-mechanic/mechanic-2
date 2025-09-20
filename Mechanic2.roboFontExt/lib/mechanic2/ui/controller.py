@@ -118,6 +118,7 @@ class MechanicListItemPopoverController:
                         releaseName=releaseName,
                         preRelease="•" if data.get("prerelease", False) else "",
                         draft="•" if data.get("draft", False) else "",
+                        html_url=data.get("html_url"),
                         data=data
                     )
                 )
