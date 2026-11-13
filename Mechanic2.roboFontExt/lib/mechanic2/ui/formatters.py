@@ -29,6 +29,7 @@ class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
 
             if obj.extensionPrice():
                 priceColor = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.7, 0, 1)
+                priceColor = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.3, 0.8, 0.4, 1)
                 attrs[AppKit.NSForegroundColorAttributeName] = priceColor
                 price = AppKit.NSAttributedString.alloc().initWithString_attributes_(f'\u2003{obj.extensionPrice()}', attrs)
                 string.appendAttributedString_(price)
@@ -42,12 +43,28 @@ class MCExtensionDescriptionFormatter(AppKit.NSFormatter):
             author = AppKit.NSAttributedString.alloc().initWithString_attributes_(obj.extensionDeveloper() or '', attrs)
             string.appendAttributedString_(author)
 
+            if obj.extensionTags():
+                string.appendAttributedString_(space)
+                string.appendAttributedString_(space)
+
+                attrs[AppKit.NSFontAttributeName] = AppKit.NSFont.systemFontOfSize_(10.0)
+                attrs[AppKit.NSForegroundColorAttributeName] = AppKit.NSColor.colorWithCalibratedRed_green_blue_alpha_(0.4, 0.88, 0.98, 1)
+                attrs[AppKit.NSBaselineOffsetAttributeName] = 2
+
+                for tag in obj.extensionTags():
+                    tag = AppKit.NSAttributedString.alloc().initWithString_attributes_(f" {tag} ", attrs)
+                    string.appendAttributedString_(tag)
+                    string.appendAttributedString_(space)
+
+                del attrs[AppKit.NSBaselineOffsetAttributeName]
+
             paragraph = AppKit.NSMutableParagraphStyle.alloc().init()
             paragraph.setLineBreakMode_(AppKit.NSLineBreakByTruncatingTail)
             paragraph.setMaximumLineHeight_(14.0)
 
             attrs[AppKit.NSParagraphStyleAttributeName] = paragraph
             attrs[AppKit.NSFontAttributeName] = AppKit.NSFont.systemFontOfSize_(10.0)
+            attrs[AppKit.NSForegroundColorAttributeName] = grayColor
 
             cr = AppKit.NSAttributedString.alloc().initWithString_attributes_('\n', attrs)
             string.appendAttributedString_(cr)
