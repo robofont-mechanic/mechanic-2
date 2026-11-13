@@ -113,7 +113,7 @@ def InstalledIndicator():
     path = AppKit.NSBezierPath.bezierPathWithOvalInRect_(((0, 0), (9, 9)))
     path.addClip()
 
-    color1 = AppKit.NSColor.colorWithCalibratedWhite_alpha_(0.0, 0.4)
+    color1 = AppKit.NSColor.grayColor()
     color2 = AppKit.NSColor.colorWithCalibratedWhite_alpha_(0.0, 0.1)
 
     color1.set()
