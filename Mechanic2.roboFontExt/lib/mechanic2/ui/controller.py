@@ -73,10 +73,13 @@ class MechanicListItemPopoverController:
             ],
             doubleClickCallback=self.releasesDoubleClickCallback
         )
-
+        inset = 10
+        if item.isExtensionInstalled() and item.extensionBundle().hasDocumentation:
+            self.w.helpButton = vanilla.HelpButton((10, -30, 20, 22), callback=self.helpButtonCallback)
+            inset = 45
         self.w.installRelease = vanilla.Button((-150, -30, -10, 22), "Install Release", callback=self.installReleaseCallback)
         self.w.installRelease.show(False)
-        self.w.openInBrowser = vanilla.Button((10, -30, -170, 22), f"View on {self.item.service().title()}", callback=self.openInBrowserCallback)
+        self.w.openInBrowser = vanilla.Button((inset, -30, -170, 22), f"View on {self.item.service().title()}", callback=self.openInBrowserCallback)
         self.w.open(parentView=tableView, relativeRect=relativeRect, preferredEdge="bottom")
 
     def getPopover(self):
@@ -153,6 +156,9 @@ class MechanicListItemPopoverController:
     def openInBrowserCallback(self, sender):
         self.item.openRemoteURL(background=True)
 
+    def helpButtonCallback(self, sender):
+        self.item.extensionBundle().openHelp()
+
 
 class MCExtensionListItem(NSObject):
 
@@ -187,20 +193,22 @@ class MechanicController(BaseWindowController):
         self.w = vanilla.Window((600, 300), f"Mechanic {mechanic2ExtensionBundle.version}", minSize=(550, 200))
 
         # building toolbar
-        self._toolbarSearch = vanilla.SearchBox((0, 0, 300, 0), callback=self.toolbarSearch)
-        self._toolbarSearch.getNSSearchField().setFrame_(((0, 0), (300, 22)))
+        self._toolbarSearch = vanilla.SearchBox((0, 0, 200, 0), callback=self.toolbarSearch)
+        self._toolbarSearch.getNSSearchField().setFrame_(((0, 0), (200, 22)))
 
         toolbarItems = [
             dict(
                 itemIdentifier="search",
                 label="Search",
                 view=self._toolbarSearch.getNSSearchField(),
+                priority="high"
             ),
             dict(itemIdentifier=NSToolbarFlexibleSpaceItemIdentifier),
             dict(
                 itemIdentifier="settings",
                 label="Settings",
                 imageNamed="prefToolbarMisc",
+                imageTemplate=True,
                 callback=self.toolbarSettings,
             ),
         ]
@@ -210,14 +218,24 @@ class MechanicController(BaseWindowController):
         # building extension list
 
         columnDescriptions = [
-            dict(title="", key="extensionController", width=25, cell=MCExtensionCirleCell.alloc().init(), editable=False),
-            dict(title="Extension", key="extensionController",
+            dict(
+                title="",
+                key="extensionController",
+                width=25,
+                cell=MCExtensionCirleCell.alloc().init(),
+                editable=False
+            ),
+            dict(
+                title="Extension",
+                key="extensionController",
                 cell=MCImageTextFieldCell.alloc().init(),
                 formatter=MCExtensionDescriptionFormatter.alloc().init(),
-                editable=False),
+                editable=False
+            ),
         ]
 
-        self.w.extensionList = vanilla.List((0, 0, -0, -38),
+        self.w.extensionList = vanilla.List(
+            (0, 0, -0, -38),
             [],
             columnDescriptions=columnDescriptions,
             showColumnTitles=False,
@@ -548,7 +566,10 @@ class MechanicController(BaseWindowController):
         # show a button to open the repo in a browser
         # list all releases
         def popoverCloseCallback(sender):
-            del self._mechanicListItemPopoverController
+            try:
+                del self._mechanicListItemPopoverController
+            except Exception:
+                pass
 
         items = self.getSelection()
         if items:
@@ -609,7 +630,8 @@ class MechanicController(BaseWindowController):
     def updateCallback(self, sender):
         items = self.getSelection()
         items = [item for item in items if item.isExtensionInstalled() and item.extensionNeedsUpdate()]
-        if not items: return
+        if not items:
+            return
         self._extensionsToUpdate = items
         self._numExtensionsUpdated = 0
         self._progress = self.startProgress("Updating extensions...")
